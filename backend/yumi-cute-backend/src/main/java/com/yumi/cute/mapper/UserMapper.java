@@ -1,19 +1,12 @@
 package com.yumi.cute.mapper;
 
 import com.yumi.cute.entity.User;
-import org.apache.ibatis.annotations.Insert;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Options;
-import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.*;
 
 import java.util.List;
 
 @Mapper
 public interface UserMapper {
-
-    @Select("SELECT * FROM `user`")
-    List<User> selectAll();
-
     @Select("SELECT * FROM `user` WHERE id = #{id}")
     User selectById(Long id);
 
@@ -23,4 +16,7 @@ public interface UserMapper {
     @Insert("INSERT INTO `user` (username, password, nickname, points) VALUES (#{username}, #{password}, #{nickname}, #{points})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(User user);
+
+    @Update("UPDATE `user` SET avatar_url = #{avatarUrl},update_time=NOW() WHERE id = #{userId}")
+    int updateAvatar(@Param("userId") Long userId, @Param("avatarUrl") String avatarUrl);
 }

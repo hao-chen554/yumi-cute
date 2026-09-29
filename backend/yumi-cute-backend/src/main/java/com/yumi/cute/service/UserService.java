@@ -3,6 +3,7 @@ package com.yumi.cute.service;
 import com.yumi.cute.common.BizException;
 import com.yumi.cute.common.PointsType;
 import com.yumi.cute.common.ResultCode;
+import com.yumi.cute.common.UserContext;
 import com.yumi.cute.dto.UserLoginDTO;
 import com.yumi.cute.dto.UserRegisterDTO;
 import com.yumi.cute.entity.PointsRecord;
@@ -10,6 +11,7 @@ import com.yumi.cute.entity.User;
 import com.yumi.cute.mapper.PointsRecordMapper;
 import com.yumi.cute.mapper.UserMapper;
 import com.yumi.cute.util.JwtUtil;
+import com.yumi.cute.vo.UserInfoVO;
 import com.yumi.cute.vo.UserLoginVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
@@ -20,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(rollbackFor = Exception.class) // 遇到任何异常都回滚
 public class UserService {
 
     private static final int REGISTER_GIFT_POINTS = 100;
@@ -30,6 +31,7 @@ public class UserService {
     private final PointsRecordMapper pointsRecordMapper;
     private final JwtUtil jwtUtil;
 
+    @Transactional(rollbackFor = Exception.class) // 遇到任何异常都回滚
     public void register(UserRegisterDTO dto) {
         User exist = userMapper.selectByUsername(dto.getUsername()); // 查询是否已注册
         if (exist != null) {
@@ -80,6 +82,29 @@ public class UserService {
         userLoginVO.setPoints(user.getPoints());
         userLoginVO.setUsername(user.getUsername());
         return userLoginVO;
+    }
+
+    /** 获取当前登录用户的信息 */
+    public UserInfoVO getCurrentUser() {
+        User user = userMapper.selectById(UserContext.getUserId());
+        if (user == null) {
+            throw new BizException(ResultCode.NOT_FOUND, "用户不存在");
+        }
+
+        UserInfoVO vo = new UserInfoVO();
+        vo.setId(user.getId());
+        vo.setUsername(user.getUsername());
+        vo.setNickname(user.getNickname());
+        vo.setAvatarUrl(user.getAvatarUrl());
+        vo.setPoints(user.getPoints());
+        vo.setVipLevel(user.getVipLevel());
+        vo.setCreateTime(user.getCreateTime());
+        return vo;
+    }
+
+    /** 更新头像 */
+    public void updateAvatar(Long userId, String avatarUrl) {
+        userMapper.updateAvatar(userId, avatarUrl);
     }
 
 }

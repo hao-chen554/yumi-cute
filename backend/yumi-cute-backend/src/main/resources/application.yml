@@ -19,3 +19,8 @@ mybatis:
 jwt:
   secret: ${JWT_SECRET:yumi-cute-jwt-secret-key-2026-please-change-me}
   expire-hours: 24
+
+storage:
+  local:
+    path: ${FILE_STORAGE_PATH:C:/Projects/_files}
+    url-prefix: ${FILE_STORAGE_URL:http://localhost:8080/files}

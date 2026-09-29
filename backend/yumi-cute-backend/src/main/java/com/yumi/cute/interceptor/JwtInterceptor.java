@@ -18,7 +18,8 @@ public class JwtInterceptor implements HandlerInterceptor {
     /** 设置白名单 **/
     private static final List<String> WHITE_LIST = List.of(
             "/user/login",
-            "/user/register"
+            "/user/register",
+            "/style/list"
     );
 
     private final JwtUtil jwtUtil;
