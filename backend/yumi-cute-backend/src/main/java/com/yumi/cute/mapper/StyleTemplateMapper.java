@@ -11,4 +11,7 @@ public interface StyleTemplateMapper {
 
     @Select("SELECT * FROM style_template WHERE status = 1 ORDER BY sort_order ASC, id ASC")
     List<StyleTemplate> selectAllEnabled();
+
+    @Select("SELECT * FROM style_template WHERE id = #{id}")
+    StyleTemplate selectById(Long id);
 }

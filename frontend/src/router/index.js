@@ -24,6 +24,24 @@ const router = createRouter({
       name: 'profile',
       component: () => import('../views/ProfileView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/create',
+      name: 'create',
+      component: () => import('../views/CreateOrderView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/orders',
+      name: 'orders',
+      component: () => import('../views/MyOrdersView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/orders/:id',
+      name: 'orderDetail',
+      component: () => import('../views/OrderDetailView.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })

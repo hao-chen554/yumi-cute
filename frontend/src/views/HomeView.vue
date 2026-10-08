@@ -1,8 +1,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getStyleList } from '@/api/style'
+import { useUserStore } from '@/stores/user'
 
 const styles = ref([])
+const userStore = useUserStore()
 
 // 因为没有真实封面图，先用渐变色块占位
 const gradients = [
@@ -34,7 +36,12 @@ onMounted(async () => {
     </p>
 
     <div class="actions">
-      <RouterLink to="/register" class="btn-primary">免费开始</RouterLink>
+      <RouterLink
+          :to="userStore.isLogin ? '/create' : '/register'"
+          class="btn-primary"
+      >
+        {{ userStore.isLogin ? '开始创作' : '免费开始' }}
+      </RouterLink>
     </div>
 
     <section class="styles">

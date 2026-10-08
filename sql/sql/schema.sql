@@ -49,7 +49,7 @@ CREATE TABLE photo_order (
                              id               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
                              order_no         VARCHAR(32)  NOT NULL                COMMENT '对外订单号',
                              user_id          BIGINT       NOT NULL                COMMENT '下单用户',
-                             pet_id           BIGINT       NOT NULL                COMMENT '拍摄对象',
+                             pet_id           BIGINT       NULL                    COMMENT '拍摄宠物id（第一版可为空）',
                              style_id         BIGINT       NOT NULL                COMMENT '风格模板',
                              person_photo_url VARCHAR(500) NOT NULL DEFAULT ''     COMMENT '本人照片',
                              pet_photo_url    VARCHAR(500) NOT NULL DEFAULT ''     COMMENT '宠物照片',

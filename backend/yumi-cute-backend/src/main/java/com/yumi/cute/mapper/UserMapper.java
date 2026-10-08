@@ -19,4 +19,15 @@ public interface UserMapper {
 
     @Update("UPDATE `user` SET avatar_url = #{avatarUrl},update_time=NOW() WHERE id = #{userId}")
     int updateAvatar(@Param("userId") Long userId, @Param("avatarUrl") String avatarUrl);
+
+    /**
+     * 扣减算力。
+     * 注意 WHERE 里的 points >= #{cost}，这是防超扣的关键
+     */
+    @Update("UPDATE `user` SET points = points - #{cost}, update_time = NOW() " +
+            "WHERE id = #{userId} AND points >= #{cost}")
+    int deductPoints(@Param("userId") Long userId, @Param("cost") Integer cost);
+
+    @Update("UPDATE `user` SET points = points + #{amount}, update_time = NOW() WHERE id = #{id}")
+    int addPoints(@Param("id") Long id, @Param("amount") Integer amount);
 }

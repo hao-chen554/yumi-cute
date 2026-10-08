@@ -20,6 +20,8 @@ function handleLogout() {
         <RouterLink to="/">首页</RouterLink>
 
         <template v-if="userStore.isLogin">
+          <RouterLink to="/create">开始创作</RouterLink>
+          <RouterLink to="/orders">我的作品</RouterLink>
           <RouterLink to="/profile">我的</RouterLink>
           <span class="points">💎 {{ userStore.userInfo?.points ?? 0 }}</span>
           <span class="nickname">{{ userStore.userInfo?.nickname }}</span>
