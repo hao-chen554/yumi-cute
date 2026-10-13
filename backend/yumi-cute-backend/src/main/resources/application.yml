@@ -28,3 +28,24 @@ storage:
   local:
     path: ${FILE_STORAGE_PATH:C:/Projects/_files}
     url-prefix: ${FILE_STORAGE_URL:http://localhost:8080/files}
+
+ai:
+  provider: ${AI_PROVIDER:dashscope}        # mock = 模拟；dashscope = 真 AI
+  api-key: ${DASHSCOPE_API_KEY:}
+  base-url: ${AI_BASE_URL:}
+  model: ${AI_MODEL:qwen-image-3.0-pro}
+  # 输出分辨率
+  size: ${AI_SIZE:1024x1024}
+  # 提示词只能改写开关，开启后模型会先改写我们的提示词，可能强化也可能冲淡“保留人脸/宠物特诊”这些硬约束，出图不像预期时，优先试着关闭此开关
+  prompt-extend: ${AI_PROMPT_EXTEND:false}
+  # 思考模式。官方文档明确说明它仅在prompt-extend=true时生效，所以prompt-extend为fasle时，此开关无效
+  enable-thinking: ${AI_ENABLE_THINKING:false}
+  watermark: ${AI_WATERMARK:false}
+  retry:
+    # 总尝试次数（1 = 不重试）。只对429/5xx/超时 重试
+    max-attempts: ${AI_MAX_ATTEMPTS:3}
+    # 退避基数：实际等待 = backoff * 2^(第几次-1），即2s -> 4s
+    backoff-ms: ${AI_BACKOFF_MS:2000}
+  connect-timeout-ms: ${AI_CONNECT_TIMEOUT_MS:15000}
+  # 官方文档明确要求：图像生成耗时长，客户端超时必须给够，否则会在出图前被自己掐断，这是“一次调用”的读超时，不是整套的时间
+  read-timeout-ms: ${AI_READ_TIMEOUT_MS:600000}
