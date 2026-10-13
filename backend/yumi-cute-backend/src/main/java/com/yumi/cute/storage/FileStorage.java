@@ -9,7 +9,12 @@ import org.springframework.web.multipart.MultipartFile;
 public interface FileStorage {
 
     /**
-     * 保存文件，返回可以直接访问的 URL
+     * 保存用户上传的文件，返回可以直接访问的 URL
      */
     String save(MultipartFile file);
+
+    /**
+     * 保存一段字节数据（比如AI生成返回的图片），返回可访问的URL
+     */
+    String save(byte[] data, String extension);
 }

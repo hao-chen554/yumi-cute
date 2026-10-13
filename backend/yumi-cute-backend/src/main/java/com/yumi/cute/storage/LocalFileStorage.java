@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -26,39 +27,61 @@ public class LocalFileStorage implements FileStorage {
     @Value("${storage.local.url-prefix}")
     private String urlPrefix;
 
+
     @Override
     public String save(MultipartFile file) {
-
         String ext = getExtension(file.getOriginalFilename());
-        String relativePath = "upload/" + LocalDate.now() + "/" + UUID.randomUUID() + ext;
+        try (InputStream in = file.getInputStream()) {
+            return saveStream(in, ext);
+        } catch (IOException e) {
+            log.error("读取上传文件失败", e);
+            throw new BizException(ResultCode.SYSTEM_ERROR,"图片保存失败，请稍后再试");
+        }
+    }
 
-        Path target = Paths.get(basePath, relativePath);
+    @Override
+    public String save(byte[] data, String extension) {
+        return saveStream(new ByteArrayInputStream(data), extension);
+    }
+
+    /**
+     * 两种 来源（用户上传 / AI生成）最终都走这里
+     */
+    private String saveStream(InputStream in, String extension) {
+        String ext = normalizedValidator(extension);
+        String relativePath = "upload/" + LocalDate.now() + "/" + UUID.randomUUID() + ext;
+        Path target = Paths.get(basePath , relativePath);
 
         try {
-            // 自动创建日期目录（不存在才创建，存在就算了）
             Files.createDirectories(target.getParent());
-
-            // 流式写入，避免把整个文件读进内存
-            try (InputStream in = file.getInputStream()) {
-                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
-            }
+            Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
-            log.error("保存文件失败: {}", target, e);
-            throw new BizException(ResultCode.SYSTEM_ERROR, "图片保存失败，请稍后再试");
+            log.error("保存文件失败：{}",target,e);
+            throw new BizException(ResultCode.SYSTEM_ERROR,"图片保存失败，请稍后重试");
         }
 
         return urlPrefix + "/" + relativePath;
     }
 
-    private String getExtension(String filename) {
-        if (filename == null) {
+    private String getExtension(String fileName) {
+        if (fileName == null) {
             return ".jpg";
         }
-        int dot = filename.lastIndexOf('.');
+
+        int dot = fileName.lastIndexOf('.');
         if (dot < 0) {
             return ".jpg";
         }
-        String ext = filename.substring(dot).toLowerCase();
-        return ext.matches("\\.[a-z0-9]{1,5}") ? ext : ".jpg";
+
+        return normalizedValidator(fileName.substring(dot));
+    }
+
+    private String normalizedValidator(String ext) {
+        if (ext == null) {
+            return ".jpg";
+        }
+
+        String lower = ext.toLowerCase();
+        return lower.matches("\\.[a-z0-9]{1,5}") ? lower : ".jpg";
     }
 }
