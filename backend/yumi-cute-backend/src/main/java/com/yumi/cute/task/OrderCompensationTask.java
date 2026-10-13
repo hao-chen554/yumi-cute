@@ -30,8 +30,7 @@ public class OrderCompensationTask {
     @Scheduled(fixedDelay = 60_000)
     public void compensate() {
 
-        LocalDateTime deadline = LocalDateTime.now().minusMinutes(STUCK_MINUTES);
-        List<PhotoOrder> stuckOrders = photoOrderMapper.selectStuckOrders(deadline);
+        List<PhotoOrder> stuckOrders = photoOrderMapper.selectStuckOrders(STUCK_MINUTES);
 
         if (stuckOrders.isEmpty()) {
             return;

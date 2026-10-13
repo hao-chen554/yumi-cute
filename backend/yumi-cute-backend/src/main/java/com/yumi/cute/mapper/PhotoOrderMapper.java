@@ -43,21 +43,20 @@ public interface PhotoOrderMapper {
     @Select("SELECT * FROM photo_order WHERE order_no = #{orderNo}")
     PhotoOrder selectByOrderNo(String orderNo);
 
-    @Update("UPDATE photo_order SET status = #{status} WHERE id = #{id}")
+    @Update("UPDATE photo_order SET status = #{status} WHERE id = #{id} AND status IN (0, 1)")
     int updateStatus(@Param("id") Long id, @Param("status") Integer status);
 
-    @Update("UPDATE photo_order SET status = #{status}, success_count = #{successCount}, finish_time = NOW() WHERE id = #{id}")
+    @Update("UPDATE photo_order SET status = #{status}, success_count = #{successCount}, finish_time = NOW() WHERE id = #{id} AND status IN (0, 1)")
     int finish(@Param("id") Long id, @Param("status") Integer status,
                @Param("successCount") Integer successCount);
 
     /**
-     * 查"卡住"的订单：还停在中间态，且创建时间早于 deadline
-     * 注意：deadline 是 Java 侧算好传进来的，SQL 里不做时间运算
+     * 两边都用数据库的时钟
      */
     @Select("SELECT * FROM photo_order " +
-            "WHERE status IN (0, 1) AND create_time < #{deadline} " +
+            "WHERE status IN (0, 1) AND create_time < DATE_SUB(NOW(), INTERVAL #{stuckMinutes} MINUTE) " +
             "ORDER BY id ASC LIMIT 50")
-    List<PhotoOrder> selectStuckOrders(@Param("deadline") LocalDateTime deadline);
+    List<PhotoOrder> selectStuckOrders(@Param("stuckMinutes") int stuckMinutes);
 
     /**
      * 条件更新：只有订单还停在中间态时，才改成失败。
