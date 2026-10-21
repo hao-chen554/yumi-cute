@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { getOrderDetail } from '@/api/order'
+import {ref, onMounted, onUnmounted} from 'vue'
+import {useRoute} from 'vue-router'
+import {getOrderDetail} from '@/api/order'
 
 const route = useRoute()
 
@@ -15,7 +15,7 @@ const STATUS_TEXT = {
 const STATUS_CLASS = {
   0: 'pending', 1: 'running', 2: 'done', 3: 'partial', 4: 'failed', 5: 'canceled'
 }
-const TASK_TEXT = { 0: '排队中', 1: '生成中', 2: '已完成', 3: '失败' }
+const TASK_TEXT = {0: '排队中', 1: '生成中', 2: '已完成', 3: '失败'}
 
 /** 终态：到了这些状态就不用再轮询了 */
 const FINAL_STATUS = [2, 3, 4, 5]
@@ -86,11 +86,11 @@ onUnmounted(stopPolling)
       <h3>原图</h3>
       <div class="originals">
         <div class="original">
-          <img :src="order.personPhotoUrl" alt="本人照片" />
+          <img :src="order.personPhotoUrl" alt="本人照片"/>
           <span>你的照片</span>
         </div>
         <div class="original">
-          <img :src="order.petPhotoUrl" alt="宠物照片" />
+          <img :src="order.petPhotoUrl" alt="宠物照片"/>
           <span>宠物的照片</span>
         </div>
       </div>
@@ -98,7 +98,7 @@ onUnmounted(stopPolling)
       <h3>生成结果</h3>
       <div class="tasks">
         <div v-for="t in order.tasks" :key="t.seqNo" class="task">
-          <img v-if="t.imageUrl" :src="t.imageUrl" alt="" />
+          <img v-if="t.imageUrl" :src="t.imageUrl" alt=""/>
           <div v-else class="placeholder">
             <span>{{ TASK_TEXT[t.status] }}</span>
           </div>
@@ -116,7 +116,10 @@ onUnmounted(stopPolling)
 </template>
 
 <style scoped>
-.detail { max-width: 900px; margin: 0 auto; }
+.detail {
+  max-width: 900px;
+  margin: 0 auto;
+}
 
 .back {
   display: inline-block;
@@ -125,7 +128,9 @@ onUnmounted(stopPolling)
   margin-bottom: 24px;
 }
 
-.back:hover { color: #5b7fff; }
+.back:hover {
+  color: #5b7fff;
+}
 
 .head {
   display: flex;
@@ -134,7 +139,9 @@ onUnmounted(stopPolling)
   margin-bottom: 24px;
 }
 
-h2 { font-size: 26px; }
+h2 {
+  font-size: 26px;
+}
 
 h3 {
   font-size: 17px;
@@ -156,11 +163,22 @@ h3 {
   font-size: 14px;
 }
 
-.row:last-child { border-bottom: none; }
-.row span { color: #999; }
-.points { color: #ff7849; }
+.row:last-child {
+  border-bottom: none;
+}
 
-.originals { display: flex; gap: 16px; }
+.row span {
+  color: #999;
+}
+
+.points {
+  color: #ff7849;
+}
+
+.originals {
+  display: flex;
+  gap: 16px;
+}
 
 .original {
   flex: 1;
@@ -179,7 +197,10 @@ h3 {
   margin-bottom: 10px;
 }
 
-.original span { font-size: 13px; color: #999; }
+.original span {
+  font-size: 13px;
+  color: #999;
+}
 
 .tasks {
   display: grid;
@@ -233,13 +254,45 @@ h3 {
   font-weight: 600;
 }
 
-.badge.pending { background: #f0f2f8; color: #888; }
-.badge.running { background: #eef4ff; color: #5b7fff; }
-.badge.done { background: #eaf8ee; color: #2fa85a; }
-.badge.partial { background: #fff7e6; color: #d48806; }
-.badge.failed { background: #fff1f0; color: #ff4d4f; }
-.badge.canceled { background: #f5f5f5; color: #aaa; }
+.badge.pending {
+  background: #f0f2f8;
+  color: #888;
+}
 
-.tip { color: #999; text-align: center; padding: 60px 0; }
-.error { color: #ff4d4f; text-align: center; padding: 60px 0; }
+.badge.running {
+  background: #eef4ff;
+  color: #5b7fff;
+}
+
+.badge.done {
+  background: #eaf8ee;
+  color: #2fa85a;
+}
+
+.badge.partial {
+  background: #fff7e6;
+  color: #d48806;
+}
+
+.badge.failed {
+  background: #fff1f0;
+  color: #ff4d4f;
+}
+
+.badge.canceled {
+  background: #f5f5f5;
+  color: #aaa;
+}
+
+.tip {
+  color: #999;
+  text-align: center;
+  padding: 60px 0;
+}
+
+.error {
+  color: #ff4d4f;
+  text-align: center;
+  padding: 60px 0;
+}
 </style>

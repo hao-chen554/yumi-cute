@@ -10,6 +10,7 @@ import com.yumi.cute.entity.PointsRecord;
 import com.yumi.cute.entity.User;
 import com.yumi.cute.mapper.PointsRecordMapper;
 import com.yumi.cute.mapper.UserMapper;
+import com.yumi.cute.util.FileSigner;
 import com.yumi.cute.util.JwtUtil;
 import com.yumi.cute.vo.UserInfoVO;
 import com.yumi.cute.vo.UserLoginVO;
@@ -30,6 +31,8 @@ public class UserService {
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(); // 用于密码加密
     private final PointsRecordMapper pointsRecordMapper;
     private final JwtUtil jwtUtil;
+    private final FileService fileService;
+    private final FileSigner fileSigner;
 
     @Transactional(rollbackFor = Exception.class) // 遇到任何异常都回滚
     public void register(UserRegisterDTO dto) {
@@ -84,7 +87,9 @@ public class UserService {
         return userLoginVO;
     }
 
-    /** 获取当前登录用户的信息 */
+    /**
+     * 获取当前登录用户的信息
+     */
     public UserInfoVO getCurrentUser() {
         User user = userMapper.selectById(UserContext.getUserId());
         if (user == null) {
@@ -99,12 +104,18 @@ public class UserService {
         vo.setPoints(user.getPoints());
         vo.setVipLevel(user.getVipLevel());
         vo.setCreateTime(user.getCreateTime());
+        vo.setAvatarUrl(fileSigner.sign(user.getAvatarUrl()));
         return vo;
     }
 
-    /** 更新头像 */
+    /**
+     * 更新头像
+     */
     public void updateAvatar(Long userId, String avatarUrl) {
-        userMapper.updateAvatar(userId, avatarUrl);
+        // 前端提交过来的可能是带签名的地址，需要先剥离
+        String url = FileSigner.stripQuery(avatarUrl);
+        fileService.assertOwned(userId, url, "用户头像");
+        userMapper.updateAvatar(userId, url);
     }
 
 }

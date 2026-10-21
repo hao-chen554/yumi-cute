@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 public class PhotoOrder {
     private Long id;
     private String orderNo;
+    private String clientToken;
     private Long userId;
     private Long petId;
     private Long styleId;

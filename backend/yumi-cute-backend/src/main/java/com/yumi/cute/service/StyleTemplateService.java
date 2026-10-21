@@ -2,6 +2,7 @@ package com.yumi.cute.service;
 
 import com.yumi.cute.entity.StyleTemplate;
 import com.yumi.cute.mapper.StyleTemplateMapper;
+import com.yumi.cute.util.FileSigner;
 import com.yumi.cute.vo.StyleTemplateVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class StyleTemplateService {
     private final StyleTemplateMapper styleTemplateMapper;
+    private final FileSigner fileSigner;
 
     public List<StyleTemplateVO> listEnabled(){
         return styleTemplateMapper.selectAllEnabled().stream().map(this::toVO).toList();
@@ -24,7 +26,7 @@ public class StyleTemplateService {
         vo.setName(styleTemplate.getName());
         vo.setDescription(styleTemplate.getDescription());
         vo.setPointsCost(styleTemplate.getPointsCost());
-        vo.setCoverUrl(styleTemplate.getCoverUrl());
+        vo.setCoverUrl(fileSigner.sign(styleTemplate.getCoverUrl()));
         return vo;
     }
 }

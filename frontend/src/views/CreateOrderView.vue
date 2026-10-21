@@ -12,8 +12,10 @@ const styles = ref([])
 const loading = ref(false)
 const errorMsg = ref('')
 const orderNo = ref('')
+const clientToken = crypto.randomUUID()
 
 const form = ref({
+  clientToken,
   styleId: null,
   personPhotoUrl: '',
   petPhotoUrl: '',

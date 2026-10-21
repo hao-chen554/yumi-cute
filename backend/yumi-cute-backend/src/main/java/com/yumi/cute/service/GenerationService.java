@@ -8,6 +8,7 @@ import com.yumi.cute.generator.PhotoGenerator;
 import com.yumi.cute.mapper.PhotoOrderMapper;
 import com.yumi.cute.mapper.PhotoTaskMapper;
 import com.yumi.cute.mapper.StyleTemplateMapper;
+import com.yumi.cute.util.FileSigner;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -24,6 +25,8 @@ public class GenerationService {
     private final PhotoTaskMapper photoTaskMapper;
     private final PhotoGenerator photoGenerator;
     private final StyleTemplateMapper styleMapper;
+    private final FileService fileService;
+    private final OrderRefundService orderRefundService;
 
     @Async("photoTaskExecutor")
     public void generate(String orderNo) {
@@ -37,7 +40,7 @@ public class GenerationService {
         StyleTemplate style = styleMapper.selectById(order.getStyleId());
         if (style == null) {
             log.error("订单{}的风格{}不存在，无法生成", orderNo, order.getStyleId());
-            photoOrderMapper.finish(order.getId(), OrderConstants.STATUS_FAILED, 0);
+            orderRefundService.finalizeOrder(order, OrderConstants.STATUS_FAILED, 0);
             return;
         }
 
@@ -48,7 +51,7 @@ public class GenerationService {
             photoTaskMapper.updateStatus(task.getId(), OrderConstants.TASK_GENERATING);
         }
 
-        // ★ 核心变化：只调用一次生成器，拿回这一套的全部图片
+        // 只调用一次生成器，拿回这一套的全部图片
         List<String> urls = List.of();
         String failReason = "模型没有返回这一张";
         try {
@@ -59,6 +62,21 @@ public class GenerationService {
         } catch (Exception e) {
             failReason = shortMsg(e);
             log.error("订单 {} 生成失败", orderNo, e);
+        }
+
+        // 登记生成结果图的属主（biz_type=4）。
+        // 没有属主记录的图会被当成"不属于任何人"，老订单的图会全部变叉号。
+        for (String url : urls) {
+            if (url == null || url.isBlank()) {
+                continue;
+            }
+            try {
+                fileService.register(order.getUserId(), url, FileService.BIZ_TYPE_RESULT, 0);
+            } catch (Exception e) {
+                // 登记失败不阻断出图
+                // 记 error
+                log.error("结果图登记属主失败，订单={}，url={}", orderNo, url, e);
+            }
         }
 
         // 按顺序把结果分派给每一条任务：
@@ -91,11 +109,11 @@ public class GenerationService {
             } else {
                 finalStatus = OrderConstants.STATUS_PARTIAL_FAILED;
             }
-            photoOrderMapper.finish(order.getId(), finalStatus, success);
+            orderRefundService.finalizeOrder(order, finalStatus, success);
             log.info("订单 {} 生成结束，成功 {}/{}", orderNo, success, tasks.size());
 
         } catch (Exception e) {
-            log.error("订单 {} 最终状态写入失败", orderNo, e);
+            log.error("订单 {} 终态处理失败（状态与退款均未提交，等待补偿任务接管）", orderNo, e);
         }
     }
 

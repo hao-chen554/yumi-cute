@@ -11,9 +11,9 @@ import java.util.List;
 @Mapper
 public interface PhotoOrderMapper {
 
-    @Insert("INSERT INTO photo_order (order_no, user_id, pet_id, style_id, person_photo_url, pet_photo_url, " +
+    @Insert("INSERT INTO photo_order (order_no, client_token, user_id, pet_id, style_id, person_photo_url, pet_photo_url, " +
             "order_type, total_count, success_count, points_cost, status) " +
-            "VALUES (#{orderNo}, #{userId}, #{petId}, #{styleId}, #{personPhotoUrl}, #{petPhotoUrl}, " +
+            "VALUES (#{orderNo}, #{clientToken} #{userId}, #{petId}, #{styleId}, #{personPhotoUrl}, #{petPhotoUrl}, " +
             "#{orderType}, #{totalCount}, #{successCount}, #{pointsCost}, #{status})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(PhotoOrder order);
@@ -65,4 +65,7 @@ public interface PhotoOrderMapper {
     @Update("UPDATE photo_order SET status = #{status}, finish_time = NOW() " +
             "WHERE id = #{id} AND status IN (0, 1)")
     int markFailedIfStuck(@Param("id") Long id, @Param("status") Integer status);
+
+    @Select("SELECT * FROM photo_order WHERE user_id = #{userId} AND client_token = #{clientToken}")
+    PhotoOrder selectByClientToken(@Param("userId") Long userId, @Param("clientToken") String clientToken);
 }

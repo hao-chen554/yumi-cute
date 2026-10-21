@@ -15,8 +15,10 @@ import com.yumi.cute.mapper.PhotoTaskMapper;
 import com.yumi.cute.mapper.PointsRecordMapper;
 import com.yumi.cute.mapper.StyleTemplateMapper;
 import com.yumi.cute.mapper.UserMapper;
+import com.yumi.cute.util.FileSigner;
 import com.yumi.cute.vo.OrderDetailVO;
 import com.yumi.cute.vo.OrderListVO;
+import com.yumi.cute.vo.PhotoTaskVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,8 @@ public class OrderService {
     private final StyleTemplateMapper styleTemplateMapper;
     private final UserMapper userMapper;
     private final PointsRecordMapper pointsRecordMapper;
+    private final FileService fileService;
+    private final FileSigner fileSigner;
 
     @Transactional(rollbackFor = Exception.class)
     public String createOrder(Long userId, CreateOrderDTO dto) {
@@ -56,7 +60,14 @@ public class OrderService {
         // 试看按整套价的 1/4 收费，最少 1 算力
         int cost = isTrial ? Math.max(1, style.getPointsCost() / 4) : style.getPointsCost();
 
+        String personUrl = FileSigner.stripQuery(dto.getPersonPhotoUrl());
+        String petUrl = FileSigner.stripQuery(dto.getPetPhotoUrl());
+
         // ③ 扣算力：一条 SQL 同时完成"校验"和"扣减"，天然防超扣
+        // 校验图片属主
+        fileService.assertOwned(userId,personUrl,"本人照片");
+        fileService.assertOwned(userId,petUrl,"宠物照片");
+
         int affected = userMapper.deductPoints(userId, cost);
         if (affected == 0) {
             throw new BizException(ResultCode.PARAM_ERROR, "算力不足，请先充值");
@@ -65,11 +76,12 @@ public class OrderService {
         // ④ 创建订单
         PhotoOrder order = new PhotoOrder();
         order.setOrderNo(generateOrderNo());
+        order.setClientToken(dto.getClientToken());
         order.setUserId(userId);
         order.setPetId(null);
         order.setStyleId(style.getId());
-        order.setPersonPhotoUrl(dto.getPersonPhotoUrl());
-        order.setPetPhotoUrl(dto.getPetPhotoUrl());
+        order.setPersonPhotoUrl(personUrl);
+        order.setPetPhotoUrl(petUrl);
         order.setOrderType(dto.getOrderType());
         order.setTotalCount(totalCount);
         order.setSuccessCount(0);
@@ -126,6 +138,19 @@ public class OrderService {
         }
 
         detail.setTasks(photoTaskMapper.selectByOrderId(orderId));
+        detail.setPersonPhotoUrl(fileSigner.sign(detail.getPersonPhotoUrl()));
+        detail.setPetPhotoUrl(fileSigner.sign(detail.getPetPhotoUrl()));
+        for(PhotoTaskVO task : detail.getTasks()) {
+            task.setImageUrl(fileSigner.sign(task.getImageUrl()));
+        }
         return detail;
+    }
+
+    /**
+     * 按幂等键找已有订单
+     */
+    public String findOrderNoByClientToken(Long userId, String clientToken){
+        PhotoOrder order = photoOrderMapper.selectByClientToken(userId, clientToken);
+        return order == null ? null : order.getOrderNo();
     }
 }

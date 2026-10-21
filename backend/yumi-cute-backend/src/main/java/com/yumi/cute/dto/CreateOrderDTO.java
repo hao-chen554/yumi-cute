@@ -7,6 +7,9 @@ import lombok.Data;
 @Data
 public class CreateOrderDTO {
 
+    @NotNull(message = "缺少请求标识，请刷新页面重试")
+    private String clientToken;
+
     @NotNull(message = "请选择风格")
     private Long styleId;
 

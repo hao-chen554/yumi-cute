@@ -30,7 +30,7 @@ storage:
     url-prefix: ${FILE_STORAGE_URL:http://localhost:8080/files}
 
 ai:
-  provider: ${AI_PROVIDER:dashscope}        # mock = 模拟；dashscope = 真 AI
+  provider: ${AI_PROVIDER:mock}        # mock = 模拟；dashscope = 真 AI
   api-key: ${DASHSCOPE_API_KEY:}
   base-url: ${AI_BASE_URL:}
   model: ${AI_MODEL:qwen-image-3.0-pro}
@@ -49,3 +49,10 @@ ai:
   connect-timeout-ms: ${AI_CONNECT_TIMEOUT_MS:15000}
   # 官方文档明确要求：图像生成耗时长，客户端超时必须给够，否则会在出图前被自己掐断，这是“一次调用”的读超时，不是整套的时间
   read-timeout-ms: ${AI_READ_TIMEOUT_MS:600000}
+
+file:
+  sign:
+    # 文件访问签名的密钥。
+    secret: ${FILE_SIGN_SECRET:yumi-cute-file-sign-secret-2026}
+    # 签名有效期
+    ttl-seconds: ${FILE_SIGN_TTL:1800}

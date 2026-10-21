@@ -205,7 +205,7 @@ public class AiPhotoGenerator implements PhotoGenerator {
      * 结果图 URL 只活 24 小时，必须立刻落到我们自己的存储里。
      */
     private String downloadAndStore(String url) {
-        byte[] bytes = restClient.get().uri(URI.create(url)).retrieve().body(byte[].class);
+        byte[] bytes = restClient.get().uri(URI.create(url)).retrieve().body(byte[]. class);
 
         if (bytes == null || bytes.length == 0) {
             throw new RuntimeException("下载到的图片是空的：" + url);

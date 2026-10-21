@@ -1,5 +1,6 @@
 package com.yumi.cute.config;
 
+import com.yumi.cute.interceptor.FileAccessInterceptor;
 import com.yumi.cute.interceptor.JwtInterceptor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -11,19 +12,26 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 
     private final JwtInterceptor jwtInterceptor;
+    private final FileAccessInterceptor fileAccessInterceptor;
 
     @Value("${storage.local.path}")
     private String storagePath;
 
-    public WebConfig(JwtInterceptor jwtInterceptor) {
+    public WebConfig(JwtInterceptor jwtInterceptor,FileAccessInterceptor fileAccessInterceptor) {
         this.jwtInterceptor = jwtInterceptor;
+        this.fileAccessInterceptor =  fileAccessInterceptor;
     }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        // 接口
         registry.addInterceptor(jwtInterceptor)
                 .addPathPatterns("/**")
-                .excludePathPatterns("/files/**");   // ← 新增：静态资源不校验登录
+                .excludePathPatterns("/files/**");
+
+        // 静态文件
+        registry.addInterceptor(fileAccessInterceptor)
+                .addPathPatterns("/files/**");
     }
 
     @Override

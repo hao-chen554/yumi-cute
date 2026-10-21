@@ -25,7 +25,7 @@ public class MockPhotoGenerator implements PhotoGenerator {
      * 模拟"模型少给几张"的概率。
      * 默认 0 = 全部成功。想验证"部分失败"分支时改成 0.5。
      */
-    private static final double FAIL_RATE = 0.01;
+    private static final double FAIL_RATE = 0.0;
 
     @Override
     public List<String> generate(PhotoOrder order, StyleTemplate style) {
