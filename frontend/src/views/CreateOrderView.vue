@@ -129,6 +129,9 @@ async function handleSubmit() {
               tip="尽量正面、光线充足"
           />
         </div>
+        <p class="privacy-hint">
+          🔒 照片仅用于本次生成，不作他用；订单完成后 <b>7 天</b> 自动删除
+        </p>
       </section>
 
       <!-- 选类型 -->
@@ -330,5 +333,12 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   background: linear-gradient(135deg, #5b7fff 0%, #7b9fff 100%);
   color: #fff;
   font-size: 15px;
+}
+
+.privacy-hint {
+  font-size: 12px;
+  color: #999;
+  margin-top: 14px;
+  text-align: center;
 }
 </style>

@@ -44,6 +44,23 @@ public class LocalFileStorage implements FileStorage {
         return saveStream(new ByteArrayInputStream(data), extension);
     }
 
+    @Override
+    public void delete(String url) {
+        if(url == null || !url.startsWith(urlPrefix)){
+            return;
+        }
+        String relative = url.substring(urlPrefix.length()).replace("^/+", "");
+        Path path = Paths.get(basePath, relative);
+
+        try{
+            // 清理文件，若文件已不存在不报错
+            Files.deleteIfExists(path);
+        } catch (IOException e) {
+            log.error("删除文件失败：{}", path, e);
+            throw new BizException(ResultCode.SYSTEM_ERROR,"删除文件失败：" + path);
+        }
+    }
+
     /**
      * 两种 来源（用户上传 / AI生成）最终都走这里
      */

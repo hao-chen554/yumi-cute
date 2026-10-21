@@ -18,5 +18,6 @@ public class UserFile {
     private Integer bizType;  //1头像 2人物参考图 3宠物参考图 4生成结果 0未区分
     private Long sizeBytes;
     private LocalDateTime expireAt;  //Null = 不过期
+    private LocalDateTime deletedAt;
     private LocalDateTime createTime;
 }

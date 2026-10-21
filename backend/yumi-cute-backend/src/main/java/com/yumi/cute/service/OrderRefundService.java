@@ -24,6 +24,7 @@ public class OrderRefundService {
     private final PhotoOrderMapper photoOrderMapper;
     private final UserMapper userMapper;
     private final PointsRecordMapper pointsRecordMapper;
+    private final FileService fileService;
 
     /**
      * 把卡住的订单判定为失败并退还算力。
@@ -49,6 +50,10 @@ public class OrderRefundService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void finalizeOrder(PhotoOrder order, int finalStatus, int successCount) {
+        // 若登记清理时间失败只记录日志不影响订单终态，后续文件会被【孤儿规则】清理
+        markReferenceExpireQuietly(order.getPersonPhotoUrl());
+        markReferenceExpireQuietly(order.getPetPhotoUrl());
+
         //1、抢终态的写权限
         if (photoOrderMapper.finish(order.getId(), finalStatus, successCount) == 0) {
             log.error("订单{}已被其他流程处理，跳过终态写入与退款", order.getOrderNo());
@@ -65,6 +70,14 @@ public class OrderRefundService {
         //3、退钱＋记流水
         creditAndRecord(order, refund, "生成失败退还算力（成功" + successCount + "/" + order.getTotalCount() + ") : " + order.getOrderNo());
         log.info("订单{}终态{}，成功{}/{}，退还{}算力", order.getOrderNo(), finalStatus, successCount, order.getTotalCount(), refund);
+    }
+
+    private void markReferenceExpireQuietly(String url) {
+        try {
+            fileService.markReferenceExpire(url);
+        } catch (Exception e) {
+            log.error("登记参考图清理时间失败：{}", url, e);
+        }
     }
 
     /**

@@ -83,14 +83,22 @@ onUnmounted(stopPolling)
         <div class="row"><span>消耗算力</span><b class="points">💎 {{ order.pointsCost }}</b></div>
       </div>
 
-      <h3>原图</h3>
+      <h3>原图 <span class="privacy-tag">🔒 订单完成后 7 天自动清除</span></h3>
       <div class="originals">
         <div class="original">
-          <img :src="order.personPhotoUrl" alt="本人照片"/>
+          <img v-if="order.personPhotoUrl" :src="order.personPhotoUrl" alt="本人照片" />
+          <div v-else class="gone">
+            <span class="lock">🔒</span>
+            <span>已按隐私承诺清除</span>
+          </div>
           <span>你的照片</span>
         </div>
         <div class="original">
-          <img :src="order.petPhotoUrl" alt="宠物照片"/>
+          <img v-if="order.petPhotoUrl" :src="order.petPhotoUrl" alt="宠物照片" />
+          <div v-else class="gone">
+            <span class="lock">🔒</span>
+            <span>已按隐私承诺清除</span>
+          </div>
           <span>宠物的照片</span>
         </div>
       </div>
@@ -295,4 +303,27 @@ h3 {
   text-align: center;
   padding: 60px 0;
 }
+
+.privacy-tag {
+  font-size: 12px;
+  font-weight: 400;
+  color: #999;
+  margin-left: 8px;
+}
+
+.gone {
+  height: 220px;              /* 和 .original img 的高度保持一致 */
+  border-radius: 8px;
+  background: #f7f8fa;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #bbb;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.gone .lock { font-size: 28px; }
 </style>

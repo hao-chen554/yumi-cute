@@ -34,7 +34,7 @@ public class PhotoOrderController {
         }catch (DuplicateKeyException e){
             // 幂等命中，表示当前clientToken已经成功下过单
             String exist = orderService.findOrderNoByClientToken(userId, dto.getClientToken());
-            if(exist != null){
+            if(exist == null){
                 throw e; // 不是幂等键冲突，是别的约束
             }
             log.info("重复提交命中幂等键，返回原订单{}",exist);

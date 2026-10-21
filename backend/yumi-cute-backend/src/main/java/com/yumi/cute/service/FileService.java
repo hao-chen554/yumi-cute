@@ -8,6 +8,7 @@ import com.yumi.cute.storage.FileStorage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,7 +19,9 @@ import java.util.Set;
 @Service
 public class FileService {
 
-    /** 文件用途 **/
+    /**
+     * 文件用途
+     **/
     public static final int BIZ_TYPE_UNKNOWN = 0;
     public static final int BIZ_TYPE_AVATAR = 1;
     public static final int BIZ_TYPE_PERSON = 2;
@@ -35,6 +38,9 @@ public class FileService {
     private static final long MAX_SIZE = 10 * 1024 * 1024;
     private final FileStorage fileStorage;
     private final UserFileMapper userFileMapper;
+
+    @Value("${file.lifecycle.reference-ttl-days:7}")
+    private int referenceTtlDays;
 
     public String upload(Long userId, MultipartFile file) {
 
@@ -55,7 +61,7 @@ public class FileService {
         String url = fileStorage.save(file);
 
         try {
-            register(userId,url,BIZ_TYPE_UNKNOWN,file.getSize());
+            register(userId, url, BIZ_TYPE_UNKNOWN, file.getSize());
         } catch (Exception e) {
             log.error("文件已落盘但登记属主失败，url={}，将成为孤儿文件", url, e);
             throw new BizException(ResultCode.SYSTEM_ERROR, "图片保存失败，请稍后重试");
@@ -88,5 +94,32 @@ public class FileService {
         if (file == null || !file.getUserId().equals(userId)) {
             throw new BizException(ResultCode.PARAM_ERROR, roleName + "无效，请重新上传");
         }
+    }
+
+    /**
+     * 给参考图登记过期时间，到期自动删除
+     */
+    public void markReferenceExpire(String url) {
+        if (url == null || url.isBlank()) {
+            return;
+        }
+        int n = userFileMapper.markExpireAfterDays(url, referenceTtlDays);
+        if (n > 0) {
+            log.info("参考图已登记清理时间：{} ({} 天后)", url, referenceTtlDays);
+        }
+    }
+
+    /**
+     * 返回一个“可以展示”的地址：文件已被隐私清理时返回Null
+     */
+    public String displayableUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        UserFile file = userFileMapper.selectByUrl(url);
+        if(file!=null && file.getDeletedAt() != null){
+            return null;
+        }
+        return url;
     }
 }

@@ -13,7 +13,7 @@ public interface PhotoOrderMapper {
 
     @Insert("INSERT INTO photo_order (order_no, client_token, user_id, pet_id, style_id, person_photo_url, pet_photo_url, " +
             "order_type, total_count, success_count, points_cost, status) " +
-            "VALUES (#{orderNo}, #{clientToken} #{userId}, #{petId}, #{styleId}, #{personPhotoUrl}, #{petPhotoUrl}, " +
+            "VALUES (#{orderNo}, #{clientToken}, #{userId}, #{petId}, #{styleId}, #{personPhotoUrl}, #{petPhotoUrl}, " +
             "#{orderType}, #{totalCount}, #{successCount}, #{pointsCost}, #{status})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(PhotoOrder order);

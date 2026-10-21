@@ -17,4 +17,9 @@ public interface FileStorage {
      * 保存一段字节数据（比如AI生成返回的图片），返回可访问的URL
      */
     String save(byte[] data, String extension);
+
+    /**
+     * 删除一个文件（按访问地址），文件若不存在，静默返回
+     */
+    void delete(String url);
 }

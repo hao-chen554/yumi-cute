@@ -138,8 +138,8 @@ public class OrderService {
         }
 
         detail.setTasks(photoTaskMapper.selectByOrderId(orderId));
-        detail.setPersonPhotoUrl(fileSigner.sign(detail.getPersonPhotoUrl()));
-        detail.setPetPhotoUrl(fileSigner.sign(detail.getPetPhotoUrl()));
+        detail.setPersonPhotoUrl(fileSigner.sign(fileService.displayableUrl(detail.getPersonPhotoUrl())));
+        detail.setPetPhotoUrl(fileSigner.sign(fileService.displayableUrl(detail.getPetPhotoUrl())));
         for(PhotoTaskVO task : detail.getTasks()) {
             task.setImageUrl(fileSigner.sign(task.getImageUrl()));
         }
