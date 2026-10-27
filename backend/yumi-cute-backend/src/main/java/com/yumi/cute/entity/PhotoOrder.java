@@ -9,6 +9,7 @@ public class PhotoOrder {
     private Long id;
     private String orderNo;
     private String clientToken;
+    private String shareToken;
     private Long userId;
     private Long petId;
     private Long styleId;
@@ -21,4 +22,6 @@ public class PhotoOrder {
     private Integer status;
     private LocalDateTime createTime;
     private LocalDateTime finishTime;
+    private LocalDateTime shareExpireAt;
+    private LocalDateTime deleteAt;
 }

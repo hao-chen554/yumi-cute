@@ -11,3 +11,7 @@ export function getMyOrders(){
 export function getOrderDetail(id){
     return request.get(`/order/detail/${id}`)
 }
+
+export function deleteOrder(id) {
+    return request.delete(`/order/${id}`)
+}

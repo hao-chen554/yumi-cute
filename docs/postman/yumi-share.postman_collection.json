@@ -1,0 +1,504 @@
+{
+  "info": {
+    "name": "YuMi-cute · 分享链接越权测试",
+    "description": "覆盖：生成分享 / 公开访问 / 撤销 / 覆盖旧链 / 篡改 token / 他人订单 / 分享 token 冒充文件签名。\n\n【使用前提】\n1. 后端在 http://localhost:8080 运行，前端不用启动。\n2. 在 Collection → Variables 里填 usernameA / passwordA / usernameB / passwordB。\n   A 必须是订单 42 的所有者（user 9：yumi）。\n   B 必须是另一个用户（user 7：yumi_test2），用来测越权。\n3. 按顺序执行（Runner 直接跑整个 Collection 即可）。\n\n【注意】后端业务错误统一返回 HTTP 200，错误码在 body.code 里，所以断言全部检查 body.code，不检查 HTTP 状态码。\n\n【过期测试无法在 Postman 内完成】需要在数据库改 share_expire_at，见 Collection 末尾的说明。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{tokenA}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "usernameA", "value": "yumi" },
+    { "key": "passwordA", "value": "" },
+    { "key": "usernameB", "value": "yumi_test2" },
+    { "key": "passwordB", "value": "" },
+    { "key": "orderId", "value": "42" },
+    { "key": "tokenA", "value": "" },
+    { "key": "tokenB", "value": "" },
+    { "key": "shareToken", "value": "" },
+    { "key": "oldShareToken", "value": "" },
+    { "key": "badToken", "value": "" },
+    { "key": "imagePath", "value": "" },
+    { "key": "futureExp", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "00 登录 A（订单所有者）",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200', () => pm.expect(body.code).to.eql(200));",
+              "pm.test('拿到 token', () => pm.expect(body.data.token).to.be.a('string'));",
+              "if (body.code === 200) {",
+              "  pm.collectionVariables.set('tokenA', body.data.token);",
+              "  console.log('A = ' + body.data.username + '，算力 ' + body.data.points);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{usernameA}}\",\n  \"password\": \"{{passwordA}}\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/user/login", "host": ["{{baseUrl}}"], "path": ["user", "login"] }
+      }
+    },
+    {
+      "name": "01 登录 B（另一个用户）",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200', () => pm.expect(body.code).to.eql(200));",
+              "if (body.code === 200) {",
+              "  pm.collectionVariables.set('tokenB', body.data.token);",
+              "  console.log('B = ' + body.data.username + '（用户 id ' + body.data.userId + '）');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{usernameB}}\",\n  \"password\": \"{{passwordB}}\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/user/login", "host": ["{{baseUrl}}"], "path": ["user", "login"] }
+      }
+    },
+    {
+      "name": "02 生成分享链接（订单 42）",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200', () => pm.expect(body.code).to.eql(200));",
+              "pm.test('token 长度 32（24 字节 Base64URL）', () => pm.expect(body.data.token.length).to.eql(32));",
+              "pm.test('有失效时间', () => pm.expect(body.data.expireAt).to.be.a('string'));",
+              "if (body.code === 200) {",
+              "  pm.collectionVariables.set('shareToken', body.data.token);",
+              "  pm.collectionVariables.set('oldShareToken', body.data.token);",
+              "  console.log('分享 token：' + body.data.token);",
+              "  console.log('失效时间：' + body.data.expireAt);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/order/{{orderId}}/share",
+          "host": ["{{baseUrl}}"],
+          "path": ["order", "{{orderId}}", "share"]
+        }
+      }
+    },
+    {
+      "name": "03 公开访问分享页（不带任何鉴权）",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200（未登录也能看，这是设计意图）', () => pm.expect(body.code).to.eql(200));",
+              "pm.test('返回 6 张作品图', () => pm.expect(body.data.images.length).to.eql(6));",
+              "pm.test('图片地址都带签名', () => {",
+              "  body.data.images.forEach(u => {",
+              "    pm.expect(u).to.include('exp=');",
+              "    pm.expect(u).to.include('sig=');",
+              "  });",
+              "});",
+              "pm.test('★ 绝不包含原图字段', () => {",
+              "  const s = JSON.stringify(body);",
+              "  pm.expect(s).to.not.include('personPhoto');",
+              "  pm.expect(s).to.not.include('petPhoto');",
+              "});",
+              "pm.test('有风格名', () => pm.expect(body.data.styleName).to.be.a('string'));",
+              "if (body.code === 200 && body.data.images.length > 0) {",
+              "  const u = new URL(body.data.images[0]);",
+              "  pm.collectionVariables.set('imagePath', u.pathname);",
+              "  console.log('第一张图路径：' + u.pathname);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/share/{{shareToken}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["share", "{{shareToken}}"]
+        }
+      }
+    },
+    {
+      "name": "04 分享 token 不能当文件签名用",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('futureExp', String(Math.floor(Date.now() / 1000) + 3600));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('★ 用分享 token 冒充 sig → 403', () => pm.expect(body.code).to.eql(403));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/files/probe.jpg?exp={{futureExp}}&sig={{shareToken}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["files", "probe.jpg"],
+          "query": [
+            { "key": "exp", "value": "{{futureExp}}" },
+            { "key": "sig", "value": "{{shareToken}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "05 篡改 token 最后一位",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const t = pm.collectionVariables.get('shareToken');",
+              "const last = t.slice(-1);",
+              "const repl = last === 'A' ? 'B' : 'A';",
+              "pm.collectionVariables.set('badToken', t.slice(0, -1) + repl);",
+              "console.log('篡改前：' + t);",
+              "console.log('篡改后：' + (t.slice(0, -1) + repl));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('★ 篡改一个字符 → 404（不是 500）', () => pm.expect(body.code).to.eql(404));",
+              "pm.test('失效文案统一，不透露原因', () => pm.expect(body.message).to.eql('分享链接不存在或已失效'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/share/{{badToken}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["share", "{{badToken}}"]
+        }
+      }
+    },
+    {
+      "name": "06 别人的订单不能分享（B 尝试分享 42）",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('★ 他人订单 → 400，且不透露订单是否存在', () => pm.expect(body.code).to.eql(400));",
+              "pm.test('文案不区分「不存在」和「不是你的」', () => pm.expect(body.message).to.include('订单不存在'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [{ "key": "token", "value": "{{tokenB}}", "type": "string" }]
+        },
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/order/{{orderId}}/share",
+          "host": ["{{baseUrl}}"],
+          "path": ["order", "{{orderId}}", "share"]
+        }
+      }
+    },
+    {
+      "name": "07 不存在的订单不能分享",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 400', () => pm.expect(body.code).to.eql(400));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/order/999999/share",
+          "host": ["{{baseUrl}}"],
+          "path": ["order", "999999", "share"]
+        }
+      }
+    },
+    {
+      "name": "08 重新生成分享（覆盖旧链接）",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200', () => pm.expect(body.code).to.eql(200));",
+              "pm.test('★ 新 token 与旧 token 不同', () => {",
+              "  pm.expect(body.data.token).to.not.eql(pm.collectionVariables.get('oldShareToken'));",
+              "});",
+              "if (body.code === 200) {",
+              "  pm.collectionVariables.set('shareToken', body.data.token);",
+              "  console.log('新 token：' + body.data.token);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/order/{{orderId}}/share",
+          "host": ["{{baseUrl}}"],
+          "path": ["order", "{{orderId}}", "share"]
+        }
+      }
+    },
+    {
+      "name": "09 旧 token 已失效（覆盖生效）",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('★ 旧链接被覆盖 → 404', () => pm.expect(body.code).to.eql(404));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/share/{{oldShareToken}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["share", "{{oldShareToken}}"]
+        }
+      }
+    },
+    {
+      "name": "10 新 token 可正常访问",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200', () => pm.expect(body.code).to.eql(200));",
+              "pm.test('仍是 6 张图', () => pm.expect(body.data.images.length).to.eql(6));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/share/{{shareToken}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["share", "{{shareToken}}"]
+        }
+      }
+    },
+    {
+      "name": "11 查询分享状态（应有值）",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200', () => pm.expect(body.code).to.eql(200));",
+              "pm.test('当前存在有效分享', () => pm.expect(body.data).to.not.eql(null));",
+              "pm.test('token 与生成时一致', () => {",
+              "  pm.expect(body.data.token).to.eql(pm.collectionVariables.get('shareToken'));",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/order/{{orderId}}/share",
+          "host": ["{{baseUrl}}"],
+          "path": ["order", "{{orderId}}", "share"]
+        }
+      }
+    },
+    {
+      "name": "12 撤销分享",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200', () => pm.expect(body.code).to.eql(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/order/{{orderId}}/share",
+          "host": ["{{baseUrl}}"],
+          "path": ["order", "{{orderId}}", "share"]
+        }
+      }
+    },
+    {
+      "name": "13 撤销后访问失效",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('★ 撤销后 → 404', () => pm.expect(body.code).to.eql(404));",
+              "pm.test('文案统一', () => pm.expect(body.message).to.eql('分享链接不存在或已失效'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/share/{{shareToken}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["share", "{{shareToken}}"]
+        }
+      }
+    },
+    {
+      "name": "14 撤销后状态查询应为 null",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200', () => pm.expect(body.code).to.eql(200));",
+              "pm.test('当前没有有效分享（data 为 null）', () => pm.expect(body.data).to.eql(null));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/order/{{orderId}}/share",
+          "host": ["{{baseUrl}}"],
+          "path": ["order", "{{orderId}}", "share"]
+        }
+      }
+    },
+    {
+      "name": "15 撤销要幂等（再撤一次仍成功）",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('★ 重复撤销仍返回 200，不报错', () => pm.expect(body.code).to.eql(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/order/{{orderId}}/share",
+          "host": ["{{baseUrl}}"],
+          "path": ["order", "{{orderId}}", "share"]
+        }
+      }
+    }
+  ]
+}

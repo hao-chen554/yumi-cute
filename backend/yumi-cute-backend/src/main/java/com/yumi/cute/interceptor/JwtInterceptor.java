@@ -22,6 +22,11 @@ public class JwtInterceptor implements HandlerInterceptor {
             "/style/list"
     );
 
+    /** 前缀白名单 **/
+    private static final List<String> WHITE_PREFIX_LIST = List.of(
+            "/share/"
+    );
+
     private final JwtUtil jwtUtil;
 
     public JwtInterceptor(JwtUtil jwtUtil) {
@@ -34,6 +39,12 @@ public class JwtInterceptor implements HandlerInterceptor {
         //1.判断是否存在于白名单
         if(WHITE_LIST.contains(path)){
             return true; // 直接放行
+        }
+
+        for(String prefix : WHITE_PREFIX_LIST){
+            if(path.startsWith(prefix)){
+                return true;
+            }
         }
 
         //2. 浏览器的跨域预检请求直接放行

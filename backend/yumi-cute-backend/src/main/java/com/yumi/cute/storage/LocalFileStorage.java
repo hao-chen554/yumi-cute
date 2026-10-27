@@ -35,7 +35,7 @@ public class LocalFileStorage implements FileStorage {
             return saveStream(in, ext);
         } catch (IOException e) {
             log.error("读取上传文件失败", e);
-            throw new BizException(ResultCode.SYSTEM_ERROR,"图片保存失败，请稍后再试");
+            throw new BizException(ResultCode.SYSTEM_ERROR, "图片保存失败，请稍后再试");
         }
     }
 
@@ -44,20 +44,30 @@ public class LocalFileStorage implements FileStorage {
         return saveStream(new ByteArrayInputStream(data), extension);
     }
 
+    /**
+     * URL -> 磁盘路径。不是本存储产生的地址返回null
+     */
+    private Path toPath(String url) {
+        if (url == null || !url.startsWith(urlPrefix)) {
+            return null;
+        }
+        String relative = url.substring(urlPrefix.length()).replaceFirst("^/+", "");
+        return Paths.get(basePath, relative);
+    }
+
     @Override
     public void delete(String url) {
-        if(url == null || !url.startsWith(urlPrefix)){
+        Path path = toPath(url);
+        if (path == null) {
             return;
         }
-        String relative = url.substring(urlPrefix.length()).replace("^/+", "");
-        Path path = Paths.get(basePath, relative);
 
-        try{
+        try {
             // 清理文件，若文件已不存在不报错
             Files.deleteIfExists(path);
         } catch (IOException e) {
             log.error("删除文件失败：{}", path, e);
-            throw new BizException(ResultCode.SYSTEM_ERROR,"删除文件失败：" + path);
+            throw new BizException(ResultCode.SYSTEM_ERROR, "删除文件失败：" + path);
         }
     }
 
@@ -67,14 +77,14 @@ public class LocalFileStorage implements FileStorage {
     private String saveStream(InputStream in, String extension) {
         String ext = normalizedValidator(extension);
         String relativePath = "upload/" + LocalDate.now() + "/" + UUID.randomUUID() + ext;
-        Path target = Paths.get(basePath , relativePath);
+        Path target = Paths.get(basePath, relativePath);
 
         try {
             Files.createDirectories(target.getParent());
             Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
-            log.error("保存文件失败：{}",target,e);
-            throw new BizException(ResultCode.SYSTEM_ERROR,"图片保存失败，请稍后重试");
+            log.error("保存文件失败：{}", target, e);
+            throw new BizException(ResultCode.SYSTEM_ERROR, "图片保存失败，请稍后重试");
         }
 
         return urlPrefix + "/" + relativePath;
@@ -100,5 +110,31 @@ public class LocalFileStorage implements FileStorage {
 
         String lower = ext.toLowerCase();
         return lower.matches("\\.[a-z0-9]{1,5}") ? lower : ".jpg";
+    }
+
+    @Override
+    public InputStream openStream(String url) {
+        Path path = toPath(url);
+        if (path == null || !Files.exists(path)) {
+            return null;
+        }
+        try {
+            return Files.newInputStream(path);
+        } catch (IOException e){
+            throw new BizException(ResultCode.SYSTEM_ERROR,"读取文件失败：" + path);
+        }
+    }
+
+    @Override
+    public long size(String url){
+        Path path = toPath(url);
+        if (path == null || !Files.exists(path)) {
+            return -1;
+        }
+        try {
+            return Files.size(path);
+        } catch (IOException e) {
+            return -1;
+        }
     }
 }

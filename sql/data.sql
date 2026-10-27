@@ -58,3 +58,14 @@ INSERT INTO style_template (id, name, cover_url, description, prompt, points_cos
 (8, '咖啡馆日常', '', '像某个周末下午随手拍下的生活片段',
  'cozy cafe interior, afternoon sunlight through window, coffee cup on table, warm wood tones, candid lifestyle photography, person with pet',
  20, 8, 1);
+
+-- ------------------------------------------------------------
+--  充值套餐（4 档）
+--  amount_cent 单位是「分」：600 = ¥6.00
+--  档位设计思路：小额低赠送引流，大额高赠送提升客单
+-- ------------------------------------------------------------
+INSERT INTO recharge_package (id, name, points, bonus_points, amount_cent, sort_order, status) VALUES
+(1, '尝鲜包',  100,    0,   600, 1, 1),
+(2, '常用包',  500,   50,  3000, 2, 1),
+(3, '超值包', 1200,  200,  6800, 3, 1),
+(4, '尊享包', 3000,  800, 16800, 4, 1);

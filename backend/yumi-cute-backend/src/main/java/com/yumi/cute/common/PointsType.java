@@ -5,4 +5,5 @@ public class PointsType {
     public static final Integer GENERATE_COST = 2;
     public static final Integer RECHARGE = 3;
     public static final Integer REFUND = 4;
+    public static final Integer ADJUST = 5;
 }

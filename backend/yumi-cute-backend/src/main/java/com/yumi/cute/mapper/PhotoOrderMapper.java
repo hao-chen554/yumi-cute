@@ -22,12 +22,14 @@ public interface PhotoOrderMapper {
      * 查某个用户的订单列表
      * 用 LEFT JOIN 把风格名一起查出来，避免"先查订单、再逐个查风格"的 N+1 问题
      */
-    @Select("SELECT o.id, o.order_no, o.order_type, o.total_count, o.success_count, " +
-            "       o.points_cost, o.status, o.create_time, s.name AS style_name " +
-            "FROM photo_order o " +
-            "LEFT JOIN style_template s ON s.id = o.style_id " +
-            "WHERE o.user_id = #{userId} " +
-            "ORDER BY o.id DESC")
+    @Select("""
+        SELECT o.id, o.order_no, o.order_type, o.total_count, o.success_count,
+               o.points_cost, o.status, o.create_time, s.name AS style_name
+        FROM photo_order o
+        LEFT JOIN style_template s ON s.id = o.style_id
+        WHERE o.user_id = #{userId} AND o.deleted_at IS NULL
+        ORDER BY o.id DESC
+        """)
     List<OrderListVO> selectByUserId(Long userId);
 
     /**
@@ -37,7 +39,7 @@ public interface PhotoOrderMapper {
     @Select("SELECT o.*, s.name AS style_name " +
             "FROM photo_order o " +
             "LEFT JOIN style_template s ON s.id = o.style_id " +
-            "WHERE o.id = #{id} AND o.user_id = #{userId}")
+            "WHERE o.id = #{id} AND o.user_id = #{userId} AND o.deleted_at IS NULL")
     OrderDetailVO selectDetailById(@Param("id") Long id, @Param("userId") Long userId);
 
     @Select("SELECT * FROM photo_order WHERE order_no = #{orderNo}")
@@ -68,4 +70,46 @@ public interface PhotoOrderMapper {
 
     @Select("SELECT * FROM photo_order WHERE user_id = #{userId} AND client_token = #{clientToken}")
     PhotoOrder selectByClientToken(@Param("userId") Long userId, @Param("clientToken") String clientToken);
+
+    /**
+     * 查自己的订单 (不带分享有效性判断，仅用于归属校验)
+     */
+    @Select("SELECT * FROM photo_order WHERE user_id = #{userId} AND id = #{id}")
+    PhotoOrder selectMineById(@Param("id") Long id, @Param("userId") Long userId);
+
+    /**
+     * 启用分享：同时完成【归属校验 + 状态校验 + 写入token】
+     * 旧token会被覆盖 -> 旧链接立刻失效
+     */
+    @Update("UPDATE photo_order SET share_token = #{token}, share_expire_at = DATE_ADD(NOW(), INTERVAL #{days} DAY) WHERE id = #{id} AND user_id = #{userId} AND status IN (2,3) AND deleted_at IS NULL")
+    int enableShare(
+            @Param("id") Long id,
+            @Param("userId") Long userId,
+            @Param("token") String token,
+            @Param("days") int days
+    );
+
+    /**
+     * 撤销分享（幂等，已撤销再调不会报错）
+     */
+    @Update("UPDATE photo_order SET share_token = NULL,share_expire_at = NULL WHERE id = #{id} AND user_id = #{userId}")
+    int cancelShare(@Param("id") Long id, @Param("userId") Long userId);
+
+    /**
+     * 当前有效的分享
+     */
+    @Select("SELECT * FROM photo_order WHERE id = #{id} AND user_id = #{userId} AND share_token IS NOT NULL AND share_expire_at > NOW() AND deleted_at IS NULL")
+    PhotoOrder selectMyValidShare(@Param("id") Long id, @Param("userId") Long userId);
+
+    /**
+     * 按token查询有效分享（用于公共接口）
+     */
+    @Select("SELECT * FROM photo_order WHERE share_token = #{token} AND share_expire_at > NOW() AND deleted_at IS NULL")
+    PhotoOrder selectByValidShareToken(String token);
+
+    /**
+     * 标记删除，返回1表示删除成功
+     */
+    @Update("UPDATE photo_order SET deleted_at = NOW(),share_token = NULL,share_expire_at = NULL WHERE id = #{id} AND user_id = #{userId} AND deleted_at IS NULL AND status IN (2,3,4,5)")
+    int markDeleted(@Param("id") Long id, @Param("userId") Long userId);
 }

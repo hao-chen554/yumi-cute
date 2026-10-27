@@ -16,6 +16,7 @@ USE yumi_cute;
 
 SET NAMES utf8mb4;
 
+
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
@@ -58,10 +59,15 @@ CREATE TABLE `photo_order` (
   `status` tinyint NOT NULL DEFAULT '0' COMMENT '0待处理 1生成中 2完成 3部分失败 4失败 5已取消',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `finish_time` datetime DEFAULT NULL COMMENT '完成时间',
+  `share_token` varchar(64) DEFAULT NULL COMMENT '分享令牌；NULL = 未分享或已撤销',
+  `share_expire_at` datetime DEFAULT NULL COMMENT '分享失效时间',
+  `deleted_at` datetime DEFAULT NULL COMMENT '用户删除时间；NULL=未删除',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_order_no` (`order_no`),
   UNIQUE KEY `uk_client_token` (`user_id`,`client_token`),
-  KEY `idx_user_time` (`user_id`,`create_time`)
+  UNIQUE KEY `uk_share_token` (`share_token`),
+  KEY `idx_user_time` (`user_id`,`create_time`),
+  KEY `idx_user_deleted` (`user_id`,`deleted_at`)
 ) ENGINE=InnoDB AUTO_INCREMENT=44 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='写真订单表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -94,7 +100,43 @@ CREATE TABLE `points_record` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_user_type_biz` (`user_id`,`type`,`biz_id`),
   KEY `idx_user_time` (`user_id`,`create_time`)
-) ENGINE=InnoDB AUTO_INCREMENT=62 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='算力流水表';
+) ENGINE=InnoDB AUTO_INCREMENT=68 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='算力流水表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `recharge_order` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `recharge_no` varchar(32) NOT NULL COMMENT '充值单号',
+  `user_id` bigint NOT NULL,
+  `package_id` int NOT NULL,
+  `points` int NOT NULL COMMENT '到账算力快照 = 基础 + 赠送',
+  `amount_cent` int NOT NULL COMMENT '应付金额快照（分）',
+  `status` tinyint NOT NULL DEFAULT '0' COMMENT '0待支付 1已支付 2已到账 3已关闭',
+  `client_token` varchar(64) NOT NULL COMMENT '客户端幂等键',
+  `pay_time` datetime DEFAULT NULL,
+  `finish_time` datetime DEFAULT NULL,
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_recharge_no` (`recharge_no`),
+  UNIQUE KEY `uk_client_token` (`user_id`,`client_token`),
+  KEY `idx_user_time` (`user_id`,`create_time`),
+  KEY `idx_status_time` (`status`,`create_time`)
+) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='充值订单表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `recharge_package` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) NOT NULL COMMENT '套餐名',
+  `points` int NOT NULL COMMENT '基础算力',
+  `bonus_points` int NOT NULL DEFAULT '0' COMMENT '赠送算力',
+  `amount_cent` int NOT NULL COMMENT '售价（分）',
+  `sort_order` int NOT NULL DEFAULT '0',
+  `status` tinyint NOT NULL DEFAULT '1' COMMENT '1上架 0下架',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_status_sort` (`status`,`sort_order`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='充值套餐表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;

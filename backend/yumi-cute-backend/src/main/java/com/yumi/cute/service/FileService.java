@@ -122,4 +122,14 @@ public class FileService {
         }
         return url;
     }
+
+    /**
+     * 让文件立即到期（交给清理任务回收），跳过还被其他订单使用的文件
+     */
+    public void expireNow(String url, Long orderId) {
+        if (url == null || url.isBlank()){
+            return;
+        }
+        userFileMapper.expireIfUnused(url, orderId);
+    }
 }

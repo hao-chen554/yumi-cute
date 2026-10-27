@@ -17,7 +17,7 @@ public interface PhotoTaskMapper {
             "</script>")
     int insertBatch(@Param("tasks") List<PhotoTask> tasks);
 
-    @Select("SELECT seq_no, status, image_url, error_msg " +
+    @Select("SELECT id, seq_no, status, image_url, error_msg " +
             "FROM photo_task WHERE order_id = #{orderId} ORDER BY seq_no ASC")
     List<PhotoTaskVO> selectByOrderId(Long orderId);
 

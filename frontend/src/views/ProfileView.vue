@@ -80,7 +80,13 @@ async function handleFileChange(event) {
 
       <div class="row"><span>用户名</span><b>{{ user.username }}</b></div>
       <div class="row"><span>昵称</span><b>{{ user.nickname }}</b></div>
-      <div class="row"><span>算力</span><b class="points">💎 {{ user.points }}</b></div>
+      <div class="row">
+        <span>算力</span>
+        <span class="points-wrap">
+          <b class="points">💎 {{ user.points }}</b>
+          <router-link to="/recharge" class="recharge-link">充值</router-link>
+        </span>
+      </div>
       <div class="row"><span>注册时间</span><b>{{ user.createTime }}</b></div>
     </div>
   </div>
@@ -151,4 +157,11 @@ h2 { font-size: 22px; margin-bottom: 28px; }
 
 .tip { color: #999; text-align: center; padding: 40px 0; }
 .error { color: #ff4d4f; text-align: center; padding: 40px 0; }
+
+.points-wrap { display: inline-flex; align-items: center; gap: 10px; }
+.recharge-link {
+  font-size: 12px; color: #ff7849; text-decoration: none;
+  border: 1px solid #ffd7c2; border-radius: 20px; padding: 2px 10px;
+}
+.recharge-link:hover { background: #fff3ec; }
 </style>

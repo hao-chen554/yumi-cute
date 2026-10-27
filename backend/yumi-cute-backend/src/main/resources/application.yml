@@ -64,5 +64,17 @@ file:
     # 每次清理最多处理多少个
     batch-limit: ${FILE_CLEANUP_BATCH:200}
     # 每天凌晨三点
-    cleanup-cron: ${FILE_CLEANUP_CRON:0 0 3 * * ?}
+    cleanup-cron: ${FILE_CLEANUP_CRON:0 0/30 * * * ?}
 #    cleanup-cron: ${FILE_CLEANUP_CRON:0 */1 * * * ?}
+
+recharge:
+  # 未支付订单多少分钟后自动关闭
+  unpaid-close-minutes: ${RECHARGE_CLOSE_MINUTES:30}
+  # 每轮最多处理多少个
+  close-batch-limit: ${RECHARGE_CLOSE_BATCH:200}
+  # 每 5 分钟扫一次
+  close-cron: ${RECHARGE_CLOSE_CRON:0 */5 * * * ?}
+
+share:
+  # 分享链接有效期（天）
+  ttl-days: ${SHARE_TTL_DAYS:7}

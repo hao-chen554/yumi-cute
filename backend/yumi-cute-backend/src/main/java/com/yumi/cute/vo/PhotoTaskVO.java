@@ -8,4 +8,5 @@ public class PhotoTaskVO {
     private Integer status;
     private String imageUrl;
     private String errorMsg;
+    private Long id;
 }

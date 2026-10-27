@@ -42,6 +42,18 @@ const router = createRouter({
       name: 'orderDetail',
       component: () => import('../views/OrderDetailView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/recharge',
+      name: 'recharge',
+      component: () => import('../views/RechargeView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      // 公开页面：分享链接要给没登录的人看，所以不能加 requiresAuth
+      path: '/share/:token',
+      name: 'share',
+      component: () => import('../views/ShareView.vue')
     }
   ]
 })

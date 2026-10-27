@@ -1,0 +1,328 @@
+{
+  "info": {
+    "name": "YuMi-cute · 删除作品",
+    "description": "覆盖：越权删除 / 正常删除 / 详情消失 / 分享立即失效 / 列表消失 / 幂等 / 不存在订单。\n\n【使用前提】\n1. 后端运行在 http://localhost:8080。\n2. 在 Collection → Variables 里填 passwordA（订单 42 的所有者，user 9：yumi）和 passwordB（另一个用户，user 7：yumi_test2）。\n3. ⚠️ 这个 Collection 会真的删掉订单 42。跑之前确认它只是测试数据，或者把 orderId 改成你想删的那单。\n4. 按顺序执行。\n\n【跑完之后要用 SQL 补两项检查】见 Collection 末尾说明。\n\n【注意】后端业务错误统一返回 HTTP 200，错误码在 body.code 里，所以断言全部检查 body.code。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{tokenA}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "usernameA", "value": "yumi" },
+    { "key": "passwordA", "value": "" },
+    { "key": "usernameB", "value": "yumi_test2" },
+    { "key": "passwordB", "value": "" },
+    { "key": "orderId", "value": "42" },
+    { "key": "tokenA", "value": "" },
+    { "key": "tokenB", "value": "" },
+    { "key": "shareToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "00 登录 A（订单所有者）",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200', () => pm.expect(body.code).to.eql(200));",
+              "if (body.code === 200) pm.collectionVariables.set('tokenA', body.data.token);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{usernameA}}\",\n  \"password\": \"{{passwordA}}\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/user/login", "host": ["{{baseUrl}}"], "path": ["user", "login"] }
+      }
+    },
+    {
+      "name": "01 登录 B（另一个用户）",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200', () => pm.expect(body.code).to.eql(200));",
+              "if (body.code === 200) pm.collectionVariables.set('tokenB', body.data.token);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{usernameB}}\",\n  \"password\": \"{{passwordB}}\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/user/login", "host": ["{{baseUrl}}"], "path": ["user", "login"] }
+      }
+    },
+    {
+      "name": "02 先给订单生成分享链接（用于稍后验证失效）",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200', () => pm.expect(body.code).to.eql(200));",
+              "pm.test('拿到分享 token', () => pm.expect(body.data.token).to.be.a('string'));",
+              "if (body.code === 200) pm.collectionVariables.set('shareToken', body.data.token);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/order/{{orderId}}/share",
+          "host": ["{{baseUrl}}"],
+          "path": ["order", "{{orderId}}", "share"]
+        }
+      }
+    },
+    {
+      "name": "03 分享链接此刻应该能访问（对照组）",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200（删除前的对照组）', () => pm.expect(body.code).to.eql(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/share/{{shareToken}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["share", "{{shareToken}}"]
+        }
+      }
+    },
+    {
+      "name": "04 ★ 别人不能删我的订单（B 删 A 的 42）",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('★ 越权删除 → 404', () => pm.expect(body.code).to.eql(404));",
+              "pm.test('文案不透露订单是否存在', () => pm.expect(body.message).to.eql('订单不存在'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [{ "key": "token", "value": "{{tokenB}}", "type": "string" }]
+        },
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/order/{{orderId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["order", "{{orderId}}"]
+        }
+      }
+    },
+    {
+      "name": "05 越权失败后订单应该还在",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('★ 订单仍然存在（越权删除没有生效）', () => pm.expect(body.code).to.eql(200));",
+              "pm.test('订单 id 正确', () => pm.expect(String(body.data.id)).to.eql(pm.collectionVariables.get('orderId')));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/order/detail/{{orderId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["order", "detail", "{{orderId}}"]
+        }
+      }
+    },
+    {
+      "name": "06 ★ 正常删除自己的订单",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200', () => pm.expect(body.code).to.eql(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/order/{{orderId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["order", "{{orderId}}"]
+        }
+      }
+    },
+    {
+      "name": "07 ★ 删除后详情查不到",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('★ 详情 → 404', () => pm.expect(body.code).to.eql(404));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/order/detail/{{orderId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["order", "detail", "{{orderId}}"]
+        }
+      }
+    },
+    {
+      "name": "08 ★ 删除后分享链接立即失效",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('★ 旧分享链接 → 404', () => pm.expect(body.code).to.eql(404));",
+              "pm.test('文案统一', () => pm.expect(body.message).to.eql('分享链接不存在或已失效'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/share/{{shareToken}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["share", "{{shareToken}}"]
+        }
+      }
+    },
+    {
+      "name": "09 ★ 删除后不再出现在我的作品列表",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200', () => pm.expect(body.code).to.eql(200));",
+              "const target = pm.collectionVariables.get('orderId');",
+              "const hit = body.data.filter(o => String(o.id) === String(target));",
+              "pm.test('★ 列表里找不到这条订单', () => pm.expect(hit.length).to.eql(0));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/order/list", "host": ["{{baseUrl}}"], "path": ["order", "list"] }
+      }
+    },
+    {
+      "name": "10 ★ 重复删除要幂等（不报错）",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('★ 再删一次仍返回 200', () => pm.expect(body.code).to.eql(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/order/{{orderId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["order", "{{orderId}}"]
+        }
+      }
+    },
+    {
+      "name": "11 删除不存在的订单 → 404",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('从未存在的订单 → 404', () => pm.expect(body.code).to.eql(404));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/order/999999",
+          "host": ["{{baseUrl}}"],
+          "path": ["order", "999999"]
+        }
+      }
+    }
+  ]
+}

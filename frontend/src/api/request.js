@@ -17,6 +17,9 @@ request.interceptors.request.use(config => {
 
 request.interceptors.response.use(
     (response) => {
+        if(response.config.responseType === 'blob'){
+            return response
+        }
         const res = response.data
 
         // 业务码 401：登录态失效（token 过期或伪造）

@@ -39,4 +39,15 @@ public interface UserFileMapper {
 
     @Update("UPDATE user_file SET deleted_at = NOW() WHERE id = #{id} AND deleted_at IS NULL")
     int markDeleted(@Param("id") Long id);
+
+    /**
+     * 让文件立即到期，前提是「没有别的未删除订单还在用它」。
+     * user_file 按 URL 唯一，同一张参考图可能被多单复用，直接置 NOW() 会误伤别人。
+     */
+    @Update("UPDATE user_file SET expire_at = NOW() " +
+            "WHERE url = #{url} AND deleted_at IS NULL " +
+            "  AND NOT EXISTS (SELECT 1 FROM photo_order o " +
+            "                  WHERE o.deleted_at IS NULL AND o.id <> #{orderId} " +
+            "                    AND (o.person_photo_url = #{url} OR o.pet_photo_url = #{url}))")
+    int expireIfUnused(@Param("url") String url, @Param("orderId") Long orderId);
 }

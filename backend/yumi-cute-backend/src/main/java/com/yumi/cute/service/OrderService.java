@@ -20,6 +20,7 @@ import com.yumi.cute.vo.OrderDetailVO;
 import com.yumi.cute.vo.OrderListVO;
 import com.yumi.cute.vo.PhotoTaskVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderService {
 
     private final PhotoOrderMapper photoOrderMapper;
@@ -40,6 +42,8 @@ public class OrderService {
     private final PointsRecordMapper pointsRecordMapper;
     private final FileService fileService;
     private final FileSigner fileSigner;
+
+    private static final List<Integer> DELETABLE_STATUS = List.of(2, 3, 4, 5);
 
     @Transactional(rollbackFor = Exception.class)
     public String createOrder(Long userId, CreateOrderDTO dto) {
@@ -65,8 +69,8 @@ public class OrderService {
 
         // ③ 扣算力：一条 SQL 同时完成"校验"和"扣减"，天然防超扣
         // 校验图片属主
-        fileService.assertOwned(userId,personUrl,"本人照片");
-        fileService.assertOwned(userId,petUrl,"宠物照片");
+        fileService.assertOwned(userId, personUrl, "本人照片");
+        fileService.assertOwned(userId, petUrl, "宠物照片");
 
         int affected = userMapper.deductPoints(userId, cost);
         if (affected == 0) {
@@ -123,12 +127,16 @@ public class OrderService {
         return "YM" + time + String.format("%04d", rand);
     }
 
-    /** 我的订单列表 */
+    /**
+     * 我的订单列表
+     */
     public List<OrderListVO> listMyOrders(Long userId) {
         return photoOrderMapper.selectByUserId(userId);
     }
 
-    /** 订单详情（含每一张图的生成任务） */
+    /**
+     * 订单详情（含每一张图的生成任务）
+     */
     public OrderDetailVO getOrderDetail(Long userId, Long orderId) {
 
         OrderDetailVO detail = photoOrderMapper.selectDetailById(orderId, userId);
@@ -140,7 +148,7 @@ public class OrderService {
         detail.setTasks(photoTaskMapper.selectByOrderId(orderId));
         detail.setPersonPhotoUrl(fileSigner.sign(fileService.displayableUrl(detail.getPersonPhotoUrl())));
         detail.setPetPhotoUrl(fileSigner.sign(fileService.displayableUrl(detail.getPetPhotoUrl())));
-        for(PhotoTaskVO task : detail.getTasks()) {
+        for (PhotoTaskVO task : detail.getTasks()) {
             task.setImageUrl(fileSigner.sign(task.getImageUrl()));
         }
         return detail;
@@ -149,8 +157,35 @@ public class OrderService {
     /**
      * 按幂等键找已有订单
      */
-    public String findOrderNoByClientToken(Long userId, String clientToken){
+    public String findOrderNoByClientToken(Long userId, String clientToken) {
         PhotoOrder order = photoOrderMapper.selectByClientToken(userId, clientToken);
         return order == null ? null : order.getOrderNo();
+    }
+
+    /**
+     * 删除订单（软删）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteOrder(Long userId, Long orderId) {
+        PhotoOrder order = photoOrderMapper.selectMineById(orderId, userId);
+        if (order == null) {
+            throw new BizException(ResultCode.NOT_FOUND, "订单不存在！");
+        }
+        if (order.getDeleteAt() != null) {
+            return; // 已删除
+        }
+        if (order.getStatus() == null || !DELETABLE_STATUS.contains(order.getStatus())) {
+            throw new BizException(ResultCode.PARAM_ERROR, "订单还在生成中，请等它结束后再删除");
+        }
+        if (photoOrderMapper.markDeleted(orderId, userId) == 0) {
+            return; // 并发下别人刚删除
+        }
+
+        fileService.expireNow(order.getPersonPhotoUrl(), orderId);
+        fileService.expireNow(order.getPetPhotoUrl(), orderId);
+        for (PhotoTaskVO task : photoTaskMapper.selectByOrderId(orderId)) {
+            fileService.expireNow(task.getImageUrl(), task.getId());
+        }
+        log.info("用户 {} 删除订单 {}", userId, orderId);
     }
 }
