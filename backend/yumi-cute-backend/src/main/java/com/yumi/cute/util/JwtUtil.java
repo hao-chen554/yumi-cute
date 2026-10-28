@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtUtil {
@@ -32,6 +33,7 @@ public class JwtUtil {
 
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))    // 标准字段：主体，这里放userId
+                .setId(UUID.randomUUID().toString())   // <- jti，吊销时用
                 .claim("nickname", nickname)         // 自定义字段
                 .setIssuedAt(now)                       // 签发时间
                 .setExpiration(expireDate)              // 过期时间

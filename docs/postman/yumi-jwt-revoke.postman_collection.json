@@ -1,0 +1,197 @@
+{
+  "info": {
+    "name": "YuMi-cute · JWT 吊销",
+    "description": "验证登出即刻失效、且只失效当前 token。\n\n【使用前提】\n1. 后端 + Redis 都在运行。\n2. Variables 里填 passwordA（yumi 账号密码）。\n3. 按顺序执行。\n\n【跑完顺手看 Redis】\n  redis-cli keys \"jwt:revoked:*\"      → 应出现 1 条\n  redis-cli ttl  jwt:revoked:<jti>    → 应接近 token 剩余有效期（约 86400 秒）\n\n【注意】后端业务错误统一返回 HTTP 200，断言全部检查 body.code。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{tokenA}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "usernameA", "value": "yumi" },
+    { "key": "passwordA", "value": "" },
+    { "key": "tokenA", "value": "" },
+    { "key": "tokenOld", "value": "" },
+    { "key": "jti", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "00 登录（拿 token 并解出 jti）",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200', () => pm.expect(body.code).to.eql(200));",
+              "if (body.code !== 200) return;",
+              "const t = body.data.token;",
+              "pm.collectionVariables.set('tokenA', t);",
+              "pm.collectionVariables.set('tokenOld', t);",
+              "",
+              "// JWT 是 base64url 的三段，中间那段是 payload",
+              "const payload = JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));",
+              "pm.collectionVariables.set('jti', payload.jti || '');",
+              "pm.test('token 里带 jti（吊销的依据）', () => pm.expect(payload.jti).to.be.a('string'));",
+              "console.log('jti = ' + payload.jti);",
+              "console.log('过期时间 = ' + new Date(payload.exp * 1000).toISOString());"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{usernameA}}\",\n  \"password\": \"{{passwordA}}\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/user/login", "host": ["{{baseUrl}}"], "path": ["user", "login"] }
+      }
+    },
+    {
+      "name": "01 登出前：token 可以正常访问",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200（对照组）', () => pm.expect(body.code).to.eql(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/user/me", "host": ["{{baseUrl}}"], "path": ["user", "me"] }
+      }
+    },
+    {
+      "name": "02 登出",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200', () => pm.expect(body.code).to.eql(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/user/logout", "host": ["{{baseUrl}}"], "path": ["user", "logout"] }
+      }
+    },
+    {
+      "name": "03 ★ 用登出前的 token 再访问 → 必须 401",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('★ 旧 token 立即失效 → 401', () => pm.expect(body.code).to.eql(401));",
+              "pm.test('提示是「登录已失效」而不是「已过期」', () => pm.expect(body.message).to.include('失效'));",
+              "console.log('实际提示：' + body.message);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [{ "key": "token", "value": "{{tokenOld}}", "type": "string" }]
+        },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/user/me", "host": ["{{baseUrl}}"], "path": ["user", "me"] }
+      }
+    },
+    {
+      "name": "04 重新登录：新 token 应该可用（证明只吊销了旧的那个）",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('code = 200', () => pm.expect(body.code).to.eql(200));",
+              "if (body.code !== 200) return;",
+              "pm.collectionVariables.set('tokenA', body.data.token);",
+              "",
+              "const newPayload = JSON.parse(atob(body.data.token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));",
+              "pm.test('★ 新 token 的 jti 与旧的不同', () => {",
+              "  pm.expect(newPayload.jti).to.not.eql(pm.collectionVariables.get('jti'));",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{usernameA}}\",\n  \"password\": \"{{passwordA}}\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/user/login", "host": ["{{baseUrl}}"], "path": ["user", "login"] }
+      }
+    },
+    {
+      "name": "05 新 token 可正常访问",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('★ 新 token 不受旧 token 吊销影响 → 200', () => pm.expect(body.code).to.eql(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/user/me", "host": ["{{baseUrl}}"], "path": ["user", "me"] }
+      }
+    },
+    {
+      "name": "06 重复登出要幂等",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('重复登出仍 200，不报错', () => pm.expect(body.code).to.eql(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/user/logout", "host": ["{{baseUrl}}"], "path": ["user", "logout"] }
+      }
+    }
+  ]
+}

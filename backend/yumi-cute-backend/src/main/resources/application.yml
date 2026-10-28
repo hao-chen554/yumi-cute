@@ -13,6 +13,12 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 20MB
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 3s
 
 mybatis:
   type-aliases-package: com.yumi.cute.entity
@@ -78,3 +84,15 @@ recharge:
 share:
   # 分享链接有效期（天）
   ttl-days: ${SHARE_TTL_DAYS:7}
+
+security:
+  login-limit:
+    # 同一用户名在窗口期内允许的最大失败次数
+    max-fail: 5
+    # 统计窗口（分钟）
+    window-minutes: 10
+  # 同一 IP 的失败上限（防止换用户名撞库）
+  ip-limit:
+    max-fail: 50
+    window-minutes: 10
+    enable: true

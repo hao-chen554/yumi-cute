@@ -10,11 +10,16 @@ import com.yumi.cute.entity.PointsRecord;
 import com.yumi.cute.entity.User;
 import com.yumi.cute.mapper.PointsRecordMapper;
 import com.yumi.cute.mapper.UserMapper;
+import com.yumi.cute.security.LoginAttemptService;
+import com.yumi.cute.security.TokenBlacklistService;
 import com.yumi.cute.util.FileSigner;
 import com.yumi.cute.util.JwtUtil;
 import com.yumi.cute.vo.UserInfoVO;
 import com.yumi.cute.vo.UserLoginVO;
+import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService {
 
     private static final int REGISTER_GIFT_POINTS = 100;
@@ -33,6 +39,14 @@ public class UserService {
     private final JwtUtil jwtUtil;
     private final FileService fileService;
     private final FileSigner fileSigner;
+    private final LoginAttemptService loginAttemptService;
+    private final TokenBlacklistService tokenBlacklistService;
+
+    @Value("${security.login-limit.window-minutes:10}")
+    private long windowMinutes;
+
+    @Value("${security.login-limit.max-fail:5}")
+    private int maxFailUser;
 
     @Transactional(rollbackFor = Exception.class) // 遇到任何异常都回滚
     public void register(UserRegisterDTO dto) {
@@ -65,16 +79,37 @@ public class UserService {
     }
 
     public UserLoginVO login(UserLoginDTO dto) {
-        User user = userMapper.selectByUsername(dto.getUsername());
+        String username = dto.getUsername();
+        String ip = loginAttemptService.clientIp();
+        // 1、先看是否已锁 -- 锁了就不查库，直接拒绝
+        if (loginAttemptService.isUserLocked(username)) {
+            log.warn("登录被拒：用户名 [{}] 已锁定（失败 {} 次）",
+                    username, loginAttemptService.userFails(username));
+            throw new BizException(ResultCode.PARAM_ERROR,
+                    "登录失败次数过多，请 " + windowMinutes + " 分钟后重试");
+        }
+        if (loginAttemptService.isIpLocked(ip)) {
+            log.warn("登录被拒：IP [{}] 已锁定（失败 {} 次）",
+                    ip, loginAttemptService.ipFails(ip));
+            throw new BizException(ResultCode.PARAM_ERROR,
+                    "登录失败次数过多，请 " + windowMinutes + " 分钟后重试");
+        }
 
-        // 用户不存在 和 密码错误，返回同一异常信息
+        User user = userMapper.selectByUsername(username);
+
+        // 2、用户不存在 和 密码错误，返回同一异常信息
         if (user == null || !passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
-            throw new BizException(ResultCode.PARAM_ERROR, "用户名或密码错误！");
+            long userFails = loginAttemptService.hitUser(username);
+            loginAttemptService.hitIp(ip);
+            throw new BizException(ResultCode.UNAUTHORIZED, "用户名或密码错误！(还可重试" + Math.max(0, maxFailUser - userFails) + " 次");
         }
 
         if (user.getStatus() == 0) {
             throw new BizException(ResultCode.FORBIDDEN, "账号已被禁用！");
         }
+
+        // 3、登陆成功，清零
+        loginAttemptService.resetAll(username, ip);
 
         String token = jwtUtil.generateToken(user.getId(), user.getNickname());
 
@@ -118,4 +153,18 @@ public class UserService {
         userMapper.updateAvatar(userId, url);
     }
 
+    /**
+     * 登出：把当前token加入黑名单，幂等，token已失效也返回成功
+     */
+    public void logout(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            return;
+        }
+        try {
+            Claims claims = jwtUtil.parseToken(authorization.substring(7));
+            tokenBlacklistService.revoke(claims.getId(), claims.getExpiration());
+        } catch (Exception e) {
+            log.error("登出时 token 已失效，按幂等成功处理");
+        }
+    }
 }

@@ -15,3 +15,7 @@ export function getMyInfo() {
 export function updateAvatar(avatarUrl) {
     return request.put('/user/avatar', { avatarUrl })
 }
+
+export function logout() {
+    return request.post('/user/logout')
+}

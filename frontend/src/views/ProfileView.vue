@@ -3,6 +3,8 @@ import { ref, onMounted } from 'vue'
 import { getMyInfo, updateAvatar } from '@/api/user'
 import { uploadFile } from '@/api/file'
 import { useUserStore } from '@/stores/user'
+import {logout as logoutApi} from '@/api/user'
+import router from "@/router/index.js";
 
 const userStore = useUserStore()
 
@@ -44,6 +46,18 @@ async function handleFileChange(event) {
   } finally {
     uploading.value = false
     event.target.value = ''
+  }
+}
+
+async function handleLogout() {
+  try {
+    await logoutApi()          // 先把 token 拉黑
+  } catch (e) {
+    // 网络失败也要让本地登出，否则用户被困住
+  } finally {
+    localStorage.removeItem('token')
+    localStorage.removeItem('userInfo')
+    router.push('/login')
   }
 }
 </script>

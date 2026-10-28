@@ -47,4 +47,10 @@ public class UserController {
         userService.updateAvatar(UserContext.getUserId(), dto.getAvatarUrl());
         return Result.success();
     }
+
+    @PostMapping("/logout")
+    public Result<Void> logout(@RequestHeader(value = "Authorization",required = false) String authorization) {
+        userService.logout(authorization);
+        return Result.success();
+    }
 }
