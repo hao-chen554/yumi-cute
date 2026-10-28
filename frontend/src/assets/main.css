@@ -1,16 +1,212 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@import "tailwindcss";
+
+/* ============================================================
+   设计 token
+   ------------------------------------------------------------
+   规则：页面和组件里不允许出现硬编码色值（#xxxxxx），一律用这里的 token。
+   改主题只改这一处。
+   ============================================================ */
+@theme {
+  /* ---- 品牌色：暖橙，从 #ff7849 展开的 10 阶 ---- */
+  --color-brand-50: #fff5f0;
+  --color-brand-100: #ffe6d9;
+  --color-brand-200: #ffcdb5;
+  --color-brand-300: #ffb08c;
+  --color-brand-400: #ff9064;
+  --color-brand-500: #ff7849;
+  --color-brand-600: #f2622f;
+  --color-brand-700: #d44d1d;
+  --color-brand-800: #a83b15;
+  --color-brand-900: #7d2c10;
+
+  /* ---- 中性色：文字与背景 ---- */
+  --color-ink-900: #14161a; /* 标题 */
+  --color-ink-800: #23262d;
+  --color-ink-700: #333a44; /* 正文 */
+  --color-ink-600: #4b5563;
+  --color-ink-500: #6b7280; /* 次要文字 */
+  --color-ink-400: #9ca3af; /* 弱提示 */
+  --color-ink-300: #d1d5db; /* 占位块 */
+  --color-ink-200: #e9ecef; /* 分割线 */
+  --color-ink-100: #f3f4f6; /* 浅底 */
+
+  --color-surface: #ffffff;
+  --color-canvas: #f8f9fa;
+
+  /* ---- 语义色 ---- */
+  --color-success: #2fa85a;
+  --color-success-soft: #eaf8ee;
+  --color-warning: #d48806;
+  --color-warning-soft: #fff7e6;
+  --color-danger: #ff4d4f;
+  --color-danger-soft: #fff1f0;
+  --color-info: #5b7fff;
+  --color-info-soft: #eef4ff;
+
+  /* ---- 字体 ---- */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+
+  /* ---- 阴影 ---- */
+  --shadow-card: 0 2px 8px rgb(0 0 0 / 0.05);
+  --shadow-hover: 0 8px 22px rgb(0 0 0 / 0.07);
+  --shadow-pop: 0 16px 48px rgb(0 0 0 / 0.14);
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
-  color: #333;
-  background: #f8f9fa;
+/* ============================================================
+   基础样式
+   ============================================================ */
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-ink-700;
+  }
+
+  a {
+    @apply text-inherit no-underline;
+  }
+
+  /* 键盘导航时才显示焦点环，鼠标点击不显示 —— 可访问性 + 不破坏视觉 */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-500;
+  }
+
+  /* 更细的滚动条 */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-ink-300;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-ink-400;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* 数字用等宽字形，余额/价格跳动时不抖 */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
-a {
-  text-decoration: none;
-  color: inherit;
+/* ============================================================
+   通用动画（Toast / Dialog 用）
+   ============================================================ */
+@layer utilities {
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  @keyframes pop-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes slide-down {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes shimmer {
+    100% { transform: translateX(100%); }
+  }
+
+  .animate-fade-in  { animation: fade-in 0.18s ease-out both; }
+  .animate-pop-in   { animation: pop-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .animate-slide-down { animation: slide-down 0.2s ease-out both; }
+
+  /* 骨架屏的扫光 */
+  .skeleton {
+    @apply relative overflow-hidden bg-ink-100;
+  }
+
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full;
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      rgb(255 255 255 / 0.6),
+      transparent
+    );
+    animation: shimmer 1.4s infinite;
+  }
+}
+
+/* ============================================================
+   组件级复用类（导航等，跨页面使用所以放全局）
+   ============================================================ */
+@layer components {
+  .nav-link {
+    @apply px-3 py-2 rounded-lg text-sm text-ink-600 transition-colors;
+    @apply hover:text-brand-600 hover:bg-brand-50;
+  }
+
+  /* 当前页高亮：首页用 exact-active-class，其余用 active-class */
+  .nav-link-current {
+    @apply text-brand-600 bg-brand-50 font-semibold;
+  }
+
+  .points-pill {
+    @apply inline-flex items-center gap-1.5 h-8 px-3 rounded-full;
+    @apply bg-brand-50 text-brand-600 text-sm font-semibold transition-colors;
+    @apply hover:bg-brand-100;
+  }
+}
+
+/* ============================================================
+   过渡动画（配合 <Transition name="fade|pop|toast"> 使用）
+   ============================================================ */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.18s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.pop-enter-active {
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pop-leave-active {
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+
+.pop-enter-from,
+.pop-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+}
+
+.toast-enter-active,
+.toast-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.toast-move {
+  transition: transform 0.2s ease;
 }

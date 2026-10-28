@@ -1,30 +1,30 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getMyOrders } from '@/api/order'
+import {
+  BaseBadge,
+  BaseButton,
+  BaseCard,
+  BaseSkeleton,
+  EmptyState
+} from '@/components/base'
 
 const orders = ref([])
 const loading = ref(true)
 const errorMsg = ref('')
 
-const STATUS_TEXT = {
-  0: '待生成',
-  1: '生成中',
-  2: '已完成',
-  3: '部分失败',
-  4: '生成失败',
-  5: '已取消'
+const STATUS = {
+  0: { text: '待生成', tone: 'neutral' },
+  1: { text: '生成中', tone: 'info' },
+  2: { text: '已完成', tone: 'success' },
+  3: { text: '部分失败', tone: 'warning' },
+  4: { text: '生成失败', tone: 'danger' },
+  5: { text: '已取消', tone: 'neutral' }
 }
 
-const STATUS_CLASS = {
-  0: 'pending',
-  1: 'running',
-  2: 'done',
-  3: 'partial',
-  4: 'failed',
-  5: 'canceled'
-}
-
-onMounted(async () => {
+async function load() {
+  loading.value = true
+  errorMsg.value = ''
   try {
     orders.value = await getMyOrders()
   } catch (e) {
@@ -32,135 +32,101 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(load)
 
 function fmtTime(t) {
-  return t ? t.replace('T', ' ').slice(0, 16) : ''
+  return t ? String(t).replace('T', ' ').slice(0, 16) : ''
 }
 </script>
 
 <template>
-  <div class="orders">
-    <h2>我的作品</h2>
-    <p class="subtitle">这里是你和它的每一套写真</p>
+  <div class="mx-auto w-full max-w-3xl">
+    <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight text-ink-900">我的作品</h1>
+        <p class="mt-1 text-sm text-ink-400">
+          <template v-if="loading">正在加载…</template>
+          <template v-else-if="orders.length">你和它的每一套写真，共 {{ orders.length }} 套</template>
+          <template v-else>你和它的每一套写真</template>
+        </p>
+      </div>
 
-    <p v-if="loading" class="tip">加载中...</p>
-    <p v-else-if="errorMsg" class="error">{{ errorMsg }}</p>
-
-    <div v-else-if="orders.length === 0" class="empty">
-      <div class="icon">🐾</div>
-      <p>还没有作品</p>
-      <RouterLink to="/create" class="btn">去创作第一套</RouterLink>
+      <RouterLink to="/create">
+        <BaseButton size="sm">+ 新建一套</BaseButton>
+      </RouterLink>
     </div>
 
-    <div v-else class="list">
-      <RouterLink
-          v-for="o in orders"
-          :key="o.id"
-          :to="`/orders/${o.id}`"
-          class="card"
-      >
-        <div class="left">
-          <div class="style-name">{{ o.styleName }}</div>
-          <div class="meta">
-            <span>{{ o.orderType === 1 ? '试看单' : '整套单' }}</span>
-            <span>·</span>
-            <span>{{ o.successCount }} / {{ o.totalCount }} 张</span>
-            <span>·</span>
-            <span>💎 {{ o.pointsCost }}</span>
+    <!-- 加载中 -->
+    <div v-if="loading" class="space-y-3.5">
+      <BaseCard v-for="i in 3" :key="i">
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex-1 space-y-2.5">
+            <BaseSkeleton size="h-5 w-24" />
+            <BaseSkeleton size="h-3 w-40" />
+            <BaseSkeleton size="h-3 w-32" />
           </div>
-          <div class="order-no">{{ o.orderNo }}</div>
+          <BaseSkeleton size="h-6 w-16" rounded="rounded-full" />
         </div>
+      </BaseCard>
+    </div>
 
-        <div class="right">
-          <span class="badge" :class="STATUS_CLASS[o.status]">
-            {{ STATUS_TEXT[o.status] }}
-          </span>
-          <div class="time">{{ fmtTime(o.createTime) }}</div>
+    <!-- 加载失败 -->
+    <BaseCard v-else-if="errorMsg" padding="none">
+      <EmptyState title="作品加载失败" :description="errorMsg" emoji="⚠️">
+        <template #action>
+          <BaseButton @click="load">重新加载</BaseButton>
+        </template>
+      </EmptyState>
+    </BaseCard>
+
+    <!-- 空状态 -->
+    <BaseCard v-else-if="!orders.length" padding="none">
+      <EmptyState
+        title="还没有作品"
+        description="上传一张你和毛孩子的合照，选一个风格，先出一张试看。"
+        emoji="🐾"
+      >
+        <template #action>
+          <BaseButton @click="$router.push('/create')">去创作第一套</BaseButton>
+        </template>
+      </EmptyState>
+    </BaseCard>
+
+    <!-- 列表 -->
+    <div v-else class="space-y-3.5">
+      <RouterLink
+        v-for="o in orders"
+        :key="o.id"
+        :to="`/orders/${o.id}`"
+        class="block rounded-2xl bg-surface p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-hover"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0 flex-1">
+            <h2 class="truncate text-base font-semibold text-ink-900 sm:text-lg">
+              {{ o.styleName }}
+            </h2>
+
+            <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-ink-500">
+              <span>{{ o.orderType === 1 ? '试看单' : '整套单' }}</span>
+              <span class="text-ink-300">·</span>
+              <span class="tabular-nums">{{ o.successCount }} / {{ o.totalCount }} 张</span>
+              <span class="text-ink-300">·</span>
+              <span class="font-semibold text-brand-600 tabular-nums">💎 {{ o.pointsCost }}</span>
+            </div>
+
+            <p class="mt-1.5 truncate font-mono text-xs text-ink-300">{{ o.orderNo }}</p>
+          </div>
+
+          <div class="flex shrink-0 flex-col items-end gap-2">
+            <BaseBadge :tone="STATUS[o.status]?.tone || 'neutral'">
+              {{ STATUS[o.status]?.text || '未知' }}
+            </BaseBadge>
+            <span class="text-xs text-ink-300 tabular-nums">{{ fmtTime(o.createTime) }}</span>
+          </div>
         </div>
       </RouterLink>
     </div>
   </div>
 </template>
-
-<style scoped>
-.orders { max-width: 860px; margin: 0 auto; }
-
-h2 { font-size: 26px; margin-bottom: 8px; }
-.subtitle { font-size: 14px; color: #999; margin-bottom: 32px; }
-
-.list { display: flex; flex-direction: column; gap: 14px; }
-
-.card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #fff;
-  border-radius: 14px;
-  padding: 20px 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  transition: all 0.25s;
-}
-
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.09);
-}
-
-.style-name { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
-
-.meta {
-  display: flex;
-  gap: 8px;
-  font-size: 13px;
-  color: #888;
-  margin-bottom: 6px;
-}
-
-.order-no {
-  font-family: monospace;
-  font-size: 12px;
-  color: #bbb;
-}
-
-.right { text-align: right; }
-
-.badge {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.badge.pending { background: #f0f2f8; color: #888; }
-.badge.running { background: #eef4ff; color: #5b7fff; }
-.badge.done { background: #eaf8ee; color: #2fa85a; }
-.badge.partial { background: #fff7e6; color: #d48806; }
-.badge.failed { background: #fff1f0; color: #ff4d4f; }
-.badge.canceled { background: #f5f5f5; color: #aaa; }
-
-.time { font-size: 12px; color: #bbb; margin-top: 8px; }
-
-.empty {
-  text-align: center;
-  padding: 80px 0;
-  background: #fff;
-  border-radius: 16px;
-}
-
-.empty .icon { font-size: 48px; margin-bottom: 16px; }
-.empty p { color: #999; margin-bottom: 24px; }
-
-.btn {
-  display: inline-block;
-  padding: 12px 36px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #5b7fff 0%, #7b9fff 100%);
-  color: #fff;
-  font-size: 15px;
-}
-
-.tip { color: #999; text-align: center; padding: 60px 0; }
-.error { color: #ff4d4f; text-align: center; padding: 60px 0; }
-</style>

@@ -37,3 +37,7 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# AI 截图产物（自动生成，不提交）
+.screenshots/
+

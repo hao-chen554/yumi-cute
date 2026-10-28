@@ -46,8 +46,9 @@ YuMi-cute 把这个顺序倒过来：
 | 层 | 选型 |
 |---|---|
 | 后端 | Spring Boot 4.0.8 / Java 21 / MyBatis（注解 SQL）/ MySQL 9 |
-| 前端 | Vue 3 / Vite / Pinia / vue-router |
+| 前端 | Vue 3 / Vite / Pinia / vue-router / **Tailwind CSS v4** / 自建基础组件 |
 | AI | 阿里云百炼 `qwen-image-3.0-pro`（图生图，**一次调用出整套**） |
+| 工程 | ESLint + Prettier / Playwright（自动截图） |
 
 ---
 
@@ -188,4 +189,5 @@ npm run dev
 ## 文档
 
 - [PRODUCT.md](PRODUCT.md) —— 产品定义：为谁做、解决什么、明确不做什么
+- [docs/FRONTEND.md](docs/FRONTEND.md) —— 前端设计规范：色板、间距、组件用法、错误处理约定
 - [docs/PITFALLS.md](docs/PITFALLS.md) —— 踩坑记录：31 条，分环境 / 数据库 / 后端逻辑 / 前后端联调 / 安全 / 设计理念六类
