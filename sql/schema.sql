@@ -62,12 +62,14 @@ CREATE TABLE `photo_order` (
   `share_token` varchar(64) DEFAULT NULL COMMENT '分享令牌；NULL = 未分享或已撤销',
   `share_expire_at` datetime DEFAULT NULL COMMENT '分享失效时间',
   `deleted_at` datetime DEFAULT NULL COMMENT '用户删除时间；NULL=未删除',
+  `custom_note` varchar(120) DEFAULT NULL COMMENT '用户补充要求（下单时快照）',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_order_no` (`order_no`),
   UNIQUE KEY `uk_client_token` (`user_id`,`client_token`),
   UNIQUE KEY `uk_share_token` (`share_token`),
   KEY `idx_user_time` (`user_id`,`create_time`),
-  KEY `idx_user_deleted` (`user_id`,`deleted_at`)
+  KEY `idx_user_deleted` (`user_id`,`deleted_at`),
+  KEY `idx_status_id` (`status`,`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=44 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='写真订单表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -83,7 +85,7 @@ CREATE TABLE `photo_task` (
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
-  KEY `idx_order_id` (`order_id`)
+  KEY `idx_order_seq` (`order_id`,`seq_no`)
 ) ENGINE=InnoDB AUTO_INCREMENT=155 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='生图任务表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

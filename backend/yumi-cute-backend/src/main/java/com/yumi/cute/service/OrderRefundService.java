@@ -8,6 +8,7 @@ import com.yumi.cute.entity.User;
 import com.yumi.cute.mapper.PhotoOrderMapper;
 import com.yumi.cute.mapper.PointsRecordMapper;
 import com.yumi.cute.mapper.UserMapper;
+import com.yumi.cute.util.RefundCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -81,24 +82,11 @@ public class OrderRefundService {
     }
 
     /**
-     * 退款规则：
-     * 全部失败 -> 全额退
-     * 部分失败 -> 按失败张数比例退（整数除法向下取整，永远不超退）
-     * 成功 -> 不退
+     * 退款规则见 {@link RefundCalculator} —— 纯计算逻辑已抽出，便于单测
      */
     private int calcRefund(PhotoOrder order, int finalStatus, int successCount) {
-        int cost = order.getPointsCost() == null ? 0 : order.getPointsCost();
-        int total = (order.getTotalCount() == null || order.getTotalCount() <= 0) ? 1 : order.getTotalCount();
-
-        if (finalStatus == OrderConstants.STATUS_FAILED || finalStatus == OrderConstants.STATUS_CANCELED) {
-            return cost;
-        }
-
-        if (finalStatus == OrderConstants.STATUS_PARTIAL_FAILED) {
-            return cost * (total - successCount) / total;
-        }
-
-        return 0;
+        return RefundCalculator.calc(
+                finalStatus, order.getPointsCost(), order.getTotalCount(), successCount);
     }
 
     /**

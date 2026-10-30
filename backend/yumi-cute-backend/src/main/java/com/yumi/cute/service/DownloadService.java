@@ -8,6 +8,7 @@ import com.yumi.cute.mapper.PhotoOrderMapper;
 import com.yumi.cute.mapper.PhotoTaskMapper;
 import com.yumi.cute.vo.DownloadPlan;
 import com.yumi.cute.vo.OrderDetailVO;
+import com.yumi.cute.util.DownloadNaming;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,9 +42,10 @@ public class DownloadService {
             throw new BizException(ResultCode.PARAM_ERROR, "这张图还没生成成功！");
         }
 
-        String fileName = styleName(order) + "-" + pad(target.getSeqNo()) + extensionOf(target.getImageUrl());
+        String fileName = styleName(order) + "-" + DownloadNaming.padSeq(target.getSeqNo())
+                + DownloadNaming.extensionOf(target.getImageUrl());
 
-        return new DownloadPlan(fileName, contentTypeOf(fileName),
+        return new DownloadPlan(fileName, DownloadNaming.contentTypeOf(fileName),
                 List.of(new DownloadPlan.Entry(fileName, target.getImageUrl())));
     }
 
@@ -64,13 +66,14 @@ public class DownloadService {
             if(task.getImageUrl() == null || task.getImageUrl().isBlank()){
                 continue;
             }
-            String name = style + "-" + pad(task.getSeqNo()) + extensionOf(task.getImageUrl());
+            String name = style + "-" + DownloadNaming.padSeq(task.getSeqNo())
+                    + DownloadNaming.extensionOf(task.getImageUrl());
             entries.add(new DownloadPlan.Entry(name, task.getImageUrl()));
         }
         if(entries.isEmpty()){
             throw new BizException(ResultCode.PARAM_ERROR,"这套写真没有可下载的图片");
         }
-        String zipName = style + "-" + tailOf(order.getOrderNo()) + ".zip";
+        String zipName = style + "-" + DownloadNaming.tailOf(order.getOrderNo()) + ".zip";
         return new DownloadPlan(zipName, "application/zip", entries);
     }
 
@@ -91,38 +94,6 @@ public class DownloadService {
     }
 
     /**
-     * 序号补零到两位，确保解压后顺序正确
+     * 序号补零、扩展名、压缩包命名都在 {@link DownloadNaming} —— 纯函数已抽出，便于单测
      */
-    private String pad(Integer seqNo) {
-        return String.format("%02d", seqNo == null ? 0 : seqNo);
-    }
-
-    /**
-     * 从URL里取扩展名，取不到就用.jpg
-     */
-    private String extensionOf(String url) {
-        int dot = url.lastIndexOf('.');
-        int slash = url.lastIndexOf('/');
-        if(dot > slash && url.length() - dot <= 6){
-            return url.substring(dot);
-        }
-        return ".jpg";
-    }
-
-    private String contentTypeOf(String fileName){
-        String f = fileName.toLowerCase();
-        if(f.endsWith(".png")) return "image/png";
-        if(f.endsWith(".webp")) return "image/webp";
-        return "image/jpeg";
-    }
-
-    /**
-     * 订单号后6位，用于区分同一风格的多次购买
-     */
-    private String tailOf(String orderNo){
-        if(orderNo == null || orderNo.length() <= 6){
-            return "download";
-        }
-        return orderNo.substring(orderNo.length() - 6);
-    }
 }

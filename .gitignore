@@ -42,3 +42,7 @@ application-local.yml
 application-local.properties
 .env
 .env.local
+
+# 提示词实验产物（本地评估用，不提交）
+scripts/experiment-out/
+
